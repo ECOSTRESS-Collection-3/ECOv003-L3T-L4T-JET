@@ -304,7 +304,6 @@ def L3T_L4T_JET(
         metadata["ProductMetadata"]["QAPercentCloudCover"] = percent_cloud
 
         GEOS5FP_connection = GEOS5FP(
-            working_directory=working_directory,
             download_directory=GEOS5FP_directory
         )
 
