@@ -247,7 +247,6 @@ def read_ECOv003_inputs(
                 geometry=geometry,
                 coarse_geometry=coarse_geometry,
                 time_UTC=time_UTC,
-                date_UTC=date_UTC,
                 upsampling=upsampling,
                 downsampling=downsampling,
                 GEOS5FP_connection=GEOS5FP_connection
@@ -274,7 +273,6 @@ def read_ECOv003_inputs(
                 geometry=geometry,
                 coarse_geometry=coarse_geometry,
                 time_UTC=time_UTC,
-                date_UTC=date_UTC,
                 upsampling=upsampling,
                 downsampling=downsampling,
                 GEOS5FP_connection=GEOS5FP_connection

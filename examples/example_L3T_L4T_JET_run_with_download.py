@@ -58,7 +58,7 @@ with open(runconfig_filename, "r") as f:
 
 # Run the L3T/L4T JET PGE using the generated configuration file
 # By default, processing will be skipped if output files already exist
-exit_code = L3T_L4T_JET(runconfig_filename=runconfig_filename, overwrite=True)
+exit_code = L3T_L4T_JET(runconfig_filename=runconfig_filename, overwrite=True, save_diagnostics=False)
 print(f"L3T/L4T JET PGE exited with code: {exit_code}")
 
 # To force regeneration of output files even if they exist, use overwrite=True:
