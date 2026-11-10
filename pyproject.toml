@@ -64,7 +64,7 @@ dev = [
 ECOv003_L3T_L4T_JET = ["*.xml", "*.onnx"]
 
 [project.urls]
-"Homepage" = "https://github.com/ECOSTRESS-Collection-2/ECOv003-L3T-L4T-JET"
+"Homepage" = "https://github.com/ECOSTRESS-Collection-3/ECOv003-L3T-L4T-JET"
 
 [tool.setuptools.packages.find]
 exclude = ["notebooks*", "examples*", "debugging*", "performance*"]
