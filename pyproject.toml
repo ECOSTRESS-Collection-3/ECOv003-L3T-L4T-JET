@@ -12,6 +12,8 @@ authors = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -29,7 +31,7 @@ dependencies = [
     "JET3~=3.1.0",
     "koppengeiger~=1.1.0",
     "monte-carlo-sensitivity~=1.9.1",
-    "numpy~=2.4.6",
+    "numpy~=2.5.4",
     "onnx~=1.23.2",
     "onnxruntime~=1.31.1",
     "pandas~=3.1.1",
@@ -48,7 +50,7 @@ dependencies = [
     "verma-net-radiation~=1.11.0"
 ]
 
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 [project.optional-dependencies]
 dev = [
