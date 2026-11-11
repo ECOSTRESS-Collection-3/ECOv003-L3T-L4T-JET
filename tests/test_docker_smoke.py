@@ -78,11 +78,10 @@ class TestPackageStructure:
 
     def test_xml_files_present(self):
         """Test that required XML configuration files are included."""
-        import pkg_resources
         try:
-            # This will raise an exception if the file doesn't exist
-            resource = pkg_resources.resource_filename('ECOv003_L3T_L4T_JET', 'L3T_L4T_JET.xml')
-            assert resource is not None
+            from importlib.resources import files
+            resource = files('ECOv003_L3T_L4T_JET').joinpath('L3T_L4T_JET.xml')
+            assert resource.is_file(), "Configuration file 'L3T_L4T_JET.xml' not found in package"
         except Exception:
             # Fallback: check if we can import and access module
             import ECOv003_L3T_L4T_JET
