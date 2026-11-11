@@ -1,13 +1,14 @@
+import argparse
 import logging
 import sys
-import colored_logging as cl
 from os import makedirs
 from os.path import basename, join
+
+import colored_logging as cl
 
 from GEOS5FP import FailedGEOS5FPDownload
 
 from ECOv003_L3T_L4T_JET.write_ECOv003_products import write_ECOv003_products
-
 from ECOv003_exit_codes import *
 
 from JET3 import JET
@@ -17,17 +18,14 @@ from JET3 import load_ECOv002_calval_JET_inputs
 
 from .version import __version__
 from .constants import *
-
 from .exceptions import *
-
 from .read_ECOv003_inputs import read_ECOv003_inputs
 from .read_ECOv003_configuration import read_ECOv003_configuration
-
 from .generate_L3T_L4T_JET_runconfig import generate_L3T_L4T_JET_runconfig
+from .smoke_test import test as run_smoke_test
 
+logger = logging.getLogger(__name__)
 
-
-logger = logging.getLogger(__name__)  # Get a logger instance for this module.
 
 def L3T_L4T_JET(
         runconfig_filename: str,
@@ -48,32 +46,6 @@ def L3T_L4T_JET(
         save_diagnostics: bool = False) -> int:
     """
     Processes ECOSTRESS L2T LSTE and L2T STARS granules to produce L3T and L4T JET products (ECOSTRESS Collection 3).
-
-    This function orchestrates the entire processing workflow, including reading run configuration,
-    loading input data, performing meteorological and soil moisture sharpening, running
-    evapotranspiration and gross primary productivity models (FLiES-ANN, BESS-JPL, STIC-JPL, PMJPL, PTJPLSM),
-    calculating daily integrated products, and writing the output granules.
-
-    Args:
-        runconfig_filename: Path to the XML run configuration file.
-        upsampling: Upsampling method for spatial resampling (e.g., 'average', 'linear'). Defaults to 'average'.
-        downsampling: Downsampling method for spatial resampling (e.g., 'linear', 'average'). Defaults to 'linear'.
-        Rn_model_name: Model to use for net radiation ('verma', 'BESS'). Defaults to RN_MODEL_NAME.
-        include_SEB_diagnostics: Whether to include Surface Energy Balance diagnostics in the output. Defaults to INCLUDE_SEB_DIAGNOSTICS.
-        include_JET_diagnostics: Whether to include JET diagnostics in the output. Defaults to INCLUDE_JET_DIAGNOSTICS.
-        zero_COT_correction: Whether to set Cloud Optical Thickness to zero for correction. Defaults to ZERO_COT_CORRECTION.
-        sharpen_meteorology: Whether to sharpen meteorological variables using a regression model. Defaults to SHARPEN_METEOROLOGY.
-        sharpen_soil_moisture: Whether to sharpen soil moisture using a regression model. Defaults to SHARPEN_SOIL_MOISTURE.
-        strip_console: Whether to strip console output from the logger. Defaults to STRIP_CONSOLE.
-        save_intermediate: Whether to save intermediate processing steps. Defaults to SAVE_INTERMEDIATE.
-        show_distribution: Whether to show distribution plots of intermediate and final products. Defaults to SHOW_DISTRIBUTION.
-        floor_Topt: Whether to floor the optimal temperature (Topt) in the models. Defaults to FLOOR_TOPT.
-        overwrite: Whether to overwrite existing output files. If False, skips processing if all output files exist. Defaults to False.
-        diagnostics_directory: Directory to save diagnostic GeoTIFF files. Defaults to None.
-        save_diagnostics: Whether to save diagnostic rasters to disk as GeoTIFFs. Defaults to False.
-
-    Returns:
-        An integer representing the exit code of the process.
     """
     exit_code = SUCCESS_EXIT_CODE
 
@@ -84,18 +56,15 @@ def L3T_L4T_JET(
         downsampling = "linear"
 
     try:
-        # Read and process configuration
         config = read_ECOv003_configuration(
             runconfig_filename=runconfig_filename,
             strip_console=strip_console,
             overwrite=overwrite
         )
 
-        # Check if we should exit early (output already exists and no overwrite)
         if config['should_exit']:
             return config['exit_code']
 
-        # Unpack configuration variables
         runconfig = config['runconfig']
         timer = config['timer']
         working_directory = config['working_directory']
@@ -137,7 +106,6 @@ def L3T_L4T_JET(
         date_UTC = config['date_UTC']
         timestamp = config['timestamp']
 
-        # Call read_ECOv003_inputs to process all input data
         inputs = read_ECOv003_inputs(
             L2T_LSTE_filename=L2T_LSTE_filename,
             L2T_STARS_filename=L2T_STARS_filename,
@@ -156,7 +124,6 @@ def L3T_L4T_JET(
             downsampling=downsampling
         )
 
-        # Unpack results from read_ECOv003_inputs
         metadata = inputs['metadata']
         ST_K = inputs['ST_K']
         ST_C = inputs['ST_C']
@@ -188,7 +155,6 @@ def L3T_L4T_JET(
         Ea_kPa = inputs['Ea_kPa']
         Ta_K = inputs['Ta_K']
 
-        # Replace the science code with a call to the JET function
         results = JET(
             ST_C=ST_C,
             NDVI=NDVI,
@@ -215,7 +181,6 @@ def L3T_L4T_JET(
             downsampling=downsampling,
         )
 
-        # Extract all variables from the results dictionary
         SWin_TOA_Wm2 = results["SWin_TOA_Wm2"]
         SWin_FLiES_ANN_raw = results["SWin_FLiES_ANN_raw"]
         UV_Wm2 = results["UV_Wm2"]
@@ -246,10 +211,9 @@ def L3T_L4T_JET(
         WUE = results["WUE"]
         GPP_inst_g_m2_s = results["GPP_inst_g_m2_s"]
         AuxiliaryNWP = results["AuxiliaryNWP"]
-        
+
         input_pointer = f"{basename(L2T_LSTE_filename)},{basename(L2T_STARS_filename)}"
         metadata["StandardMetadata"]["InputPointer"] = input_pointer
-
         metadata["StandardMetadata"]["CollectionLabel"] = "ECOv003"
         metadata["ProductMetadata"]["AuxiliaryNWP"] = AuxiliaryNWP
 
@@ -282,21 +246,17 @@ def L3T_L4T_JET(
             WUE=WUE,
             GPP_inst_g_m2_s=GPP_inst_g_m2_s
         )
-        
-        # --- NEW DIAGNOSTICS EXPORT BLOCK ---
+
         if save_diagnostics:
             if diagnostics_directory is None:
-                # Fallback directory if True but no path is provided
                 diagnostics_directory = join(working_directory, DEFULT_DIAGNOSTICS_DIRECTORY)
-            
+
             makedirs(diagnostics_directory, exist_ok=True)
             logger.info(f"saving diagnostic GeoTIFFs to: {cl.dir(diagnostics_directory)}")
-            
-            # Combine the inputs and results dictionaries to save everything
+
             diagnostic_rasters = {**inputs, **results}
-            
+
             for var_name, data_obj in diagnostic_rasters.items():
-                # We only want to export variables that are rasters (they have the to_geotiff method)
                 if hasattr(data_obj, 'to_geotiff'):
                     try:
                         tif_filename = join(diagnostics_directory, f"{var_name}.tif")
@@ -304,7 +264,6 @@ def L3T_L4T_JET(
                         logger.info(f"Saved diagnostic: {cl.file(tif_filename)}")
                     except Exception as e:
                         logger.warning(f"Failed to write diagnostic {var_name} to GeoTIFF: {e}")
-        # ------------------------------------
 
         logger.info(f"finished L3T L4T JET run in {cl.time(timer.tocvalue())} seconds")
 
@@ -323,50 +282,112 @@ def L3T_L4T_JET(
     return exit_code
 
 
-def main(argv=sys.argv):
+def build_parser() -> argparse.ArgumentParser:
+    """Builds and returns the argparse parser with sub-commands."""
+    parser = argparse.ArgumentParser(
+        prog="ECOv003-L3T-L4T-JET",
+        description="L3T/L4T JET PGE command-line interface.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"L3T/L4T JET PGE ({__version__})",
+    )
+
+    subparsers = parser.add_subparsers(dest="subcommand")
+
+    # 'test' sub-command
+    subparsers.add_parser(
+        "test",
+        help="Run smoke test suite from .smoke_test",
+        description="Execute the test() smoke test routine.",
+    )
+
+    # Main processing arguments on root parser
+    parser.add_argument(
+        "runconfig_filename",
+        nargs="?",
+        type=str,
+        help="Path to XML RunConfig file",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="Overwrite existing output files if they exist",
+    )
+    parser.add_argument(
+        "--strip-console",
+        action="store_true",
+        default=STRIP_CONSOLE,
+        help="Strip console output from logger",
+    )
+    parser.add_argument(
+        "--save-intermediate",
+        action="store_true",
+        default=SAVE_INTERMEDIATE,
+        help="Save intermediate processing steps",
+    )
+    parser.add_argument(
+        "--show-distribution",
+        action="store_true",
+        default=SHOW_DISTRIBUTION,
+        help="Show distribution plots",
+    )
+    parser.add_argument(
+        "--save-diagnostics",
+        action="store_true",
+        default=False,
+        help="Save output rasters to disk as GeoTIFF files",
+    )
+
+    return parser
+
+
+def main(argv=None):
     """
-    Main function to parse command line arguments and run the L3T_L4T_JET process.
+    Main function to parse command line arguments and execute the selected action.
 
     Args:
-        argv: Command line arguments. Defaults to sys.argv.
+        argv: Command line arguments. Defaults to sys.argv[1:].
 
     Returns:
         An integer representing the exit code.
     """
-    if len(argv) == 1 or "--version" in argv:
-        print(f"L3T/L4T JET PGE ({__version__})")
-        print(f"usage: ECOv003-L3T-L4T-JET RunConfig.xml [--overwrite] [--strip-console] [--save-intermediate] [--show-distribution] [--save-diagnostics]")
-        print(f"  --overwrite: Overwrite existing output files if they exist")
-        print(f"  --strip-console: Strip console output from logger")
-        print(f"  --save-intermediate: Save intermediate processing steps")
-        print(f"  --show-distribution: Show distribution plots")
-        print(f"  --save-diagnostics: Save output rasters to disk as GeoTIFF files")
+    if argv is None:
+        argv = sys.argv[1:]
+    elif len(argv) > 0 and argv[0] == sys.argv[0]:
+        # Handle passing full sys.argv with program name included
+        argv = argv[1:]
 
-        if "--version" in argv:
-            return SUCCESS_EXIT_CODE
-        else:
-            return RUNCONFIG_FILENAME_NOT_SUPPLIED
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
-    strip_console = "--strip-console" in argv
-    save_intermediate = "--save-intermediate" in argv
-    show_distribution = "--show-distribution" in argv
-    overwrite = "--overwrite" in argv
-    save_diagnostics = "--save-diagnostics" in argv
-    runconfig_filename = str(argv[1])
+    # Route: 'test' sub-command
+    if args.subcommand == "test":
+        result = run_smoke_test()
+        # Interpret boolean or integer returns from test()
+        if isinstance(result, int):
+            return result
+        return SUCCESS_EXIT_CODE if result or result is None else 1
+
+    # Route: Main processing run
+    if not args.runconfig_filename:
+        parser.print_usage()
+        return RUNCONFIG_FILENAME_NOT_SUPPLIED
 
     exit_code = L3T_L4T_JET(
-        runconfig_filename=runconfig_filename,
-        strip_console=strip_console,
-        save_intermediate=save_intermediate,
-        show_distribution=show_distribution,
-        overwrite=overwrite,
-        save_diagnostics=save_diagnostics
+        runconfig_filename=args.runconfig_filename,
+        strip_console=args.strip_console,
+        save_intermediate=args.save_intermediate,
+        show_distribution=args.show_distribution,
+        overwrite=args.overwrite,
+        save_diagnostics=args.save_diagnostics,
     )
 
     logger.info(f"L3T/L4T JET exit code: {exit_code}")
-
     return exit_code
 
 
 if __name__ == "__main__":
-    sys.exit(main(argv=sys.argv))
+    sys.exit(main())

@@ -5,6 +5,12 @@ ENVIRONMENT_NAME = $(PACKAGE_NAME)
 DOCKER_IMAGE_NAME = $(shell echo $(PACKAGE_NAME) | tr '[:upper:]' '[:lower:]')
 PYTHON_VERSION = $(if $(PYTHON),$(PYTHON),3.13)
 
+.PHONY: clean test verify build twine-upload dist install uninstall reinstall \
+        environment remove-environment generate-input-dataset generate-output-dataset \
+        generate-GEOS5FP-inputs colima-start docker-build docker-build-environment \
+        docker-build-installation docker-interactive docker-remove \
+        compile-documentation smoke-test smoke-test-cli docker-smoke-test docker-smoke-test-skip
+
 # Clean up build artifacts and temporary files
 clean:
 	# Remove object files, output files, and log files
@@ -24,6 +30,14 @@ clean:
 test:
 	# Execute all tests with pytest in verbose mode
 	pytest -vv -p no:warnings
+
+# Run the smoke test locally using the Python API
+smoke-test:
+	python -c "import $(MODULE_NAME); success = $(MODULE_NAME).test(); exit(0 if success else 1)"
+
+# Run the smoke test locally via the installed CLI sub-command
+smoke-test-cli:
+	$(PACKAGE_NAME) test
 
 # Verify the package installation and functionality
 verify:
@@ -110,6 +124,14 @@ docker-build-environment:
 docker-build-installation:
 	# Build the Docker image up to the 'installation' stage with the latest tag
 	docker build --target installation -t $(DOCKER_IMAGE_NAME):latest .
+
+# Build the Docker image up to the 'smoke-test' stage (runs smoke tests during build)
+docker-smoke-test:
+	docker build --target smoke-test -t $(DOCKER_IMAGE_NAME):latest .
+
+# Build Docker image up to 'build' stage, skipping smoke tests
+docker-smoke-test-skip:
+	docker build --target build -t $(DOCKER_IMAGE_NAME):latest .
 
 # Run the Docker container interactively with the Fish shell
 docker-interactive:

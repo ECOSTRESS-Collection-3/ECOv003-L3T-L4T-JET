@@ -22,7 +22,7 @@ from .read_ECOv003_inputs import read_ECOv003_inputs
 from .read_ECOv003_configuration import read_ECOv003_configuration
 
 from .generate_L3T_L4T_JET_runconfig import generate_L3T_L4T_JET_runconfig
-
+from .smoke_test import test
 
 
 logger = logging.getLogger(__name__)  # Get a logger instance for this module.
@@ -289,49 +289,3 @@ def L3T_L4T_JET(
         exit_code = exception.exit_code
 
     return exit_code
-
-
-def main(argv=sys.argv):
-    """
-    Main function to parse command line arguments and run the L3T_L4T_JET process.
-
-    Args:
-        argv: Command line arguments. Defaults to sys.argv.
-
-    Returns:
-        An integer representing the exit code.
-    """
-    if len(argv) == 1 or "--version" in argv:
-        print(f"L3T/L4T JET PGE ({__version__})")
-        print(f"usage: ECOv003-L3T-L4T-JET RunConfig.xml [--overwrite] [--strip-console] [--save-intermediate] [--show-distribution]")
-        print(f"  --overwrite: Overwrite existing output files if they exist")
-        print(f"  --strip-console: Strip console output from logger")
-        print(f"  --save-intermediate: Save intermediate processing steps")
-        print(f"  --show-distribution: Show distribution plots")
-
-        if "--version" in argv:
-            return SUCCESS_EXIT_CODE
-        else:
-            return RUNCONFIG_FILENAME_NOT_SUPPLIED
-
-    strip_console = "--strip-console" in argv
-    save_intermediate = "--save-intermediate" in argv
-    show_distribution = "--show-distribution" in argv
-    overwrite = "--overwrite" in argv
-    runconfig_filename = str(argv[1])
-
-    exit_code = L3T_L4T_JET(
-        runconfig_filename=runconfig_filename,
-        strip_console=strip_console,
-        save_intermediate=save_intermediate,
-        show_distribution=show_distribution,
-        overwrite=overwrite
-    )
-
-    logger.info(f"L3T/L4T JET exit code: {exit_code}")
-
-    return exit_code
-
-
-if __name__ == "__main__":
-    sys.exit(main(argv=sys.argv))
