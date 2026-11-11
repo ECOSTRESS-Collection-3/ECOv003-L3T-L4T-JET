@@ -25,3 +25,14 @@ WORKDIR /app
 FROM installation as build
 RUN pip install -e .[dev]
 RUN rm -rvf build; rm -rvf dist; rm -rvf *.egg-info
+
+# Docker smoke test stage - validates package installation and environment compatibility
+FROM build as smoke-test
+WORKDIR /app
+RUN echo "=== Running Docker Smoke Tests ===" && \
+    echo "Python version: $(python --version)" && \
+    echo "Package installation check..." && \
+    python -c "import ECOv003_L3T_L4T_JET; print(f'✓ ECOv003_L3T_L4T_JET package imported successfully')" && \
+    echo "Running smoke test..." && \
+    python -c "import ECOv003_L3T_L4T_JET; ECOv003_L3T_L4T_JET.test()" && \
+    echo "=== All Smoke Tests Passed ✓ ==="
