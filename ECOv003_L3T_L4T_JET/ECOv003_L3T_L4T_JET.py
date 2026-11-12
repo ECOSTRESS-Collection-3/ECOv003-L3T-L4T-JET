@@ -288,10 +288,12 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ECOv003-L3T-L4T-JET",
         description="L3T/L4T JET PGE command-line interface.",
     )
+    
     parser.add_argument(
         "--version",
         action="version",
-        version=f"L3T/L4T JET PGE ({__version__})",
+        version=f"%(prog)s {__version__}",
+        help="Show program's version number and exit.",
     )
 
     subparsers = parser.add_subparsers(dest="subcommand")

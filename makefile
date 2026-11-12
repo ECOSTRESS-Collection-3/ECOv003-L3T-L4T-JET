@@ -3,7 +3,7 @@ PACKAGE_NAME = ECOv003-L3T-L4T-JET
 MODULE_NAME = $(subst -,_,$(PACKAGE_NAME))
 ENVIRONMENT_NAME = $(PACKAGE_NAME)
 DOCKER_IMAGE_NAME = $(shell echo $(PACKAGE_NAME) | tr '[:upper:]' '[:lower:]')
-PYTHON_VERSION = $(if $(PYTHON),$(PYTHON),3.13)
+PYTHON_VERSION = $(if $(PYTHON),$(PYTHON),3.12)
 
 .PHONY: clean test verify build twine-upload dist install uninstall reinstall \
         environment remove-environment generate-input-dataset generate-output-dataset \
