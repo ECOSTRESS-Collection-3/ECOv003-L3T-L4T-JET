@@ -149,3 +149,6 @@ compile-documentation:
 	bash documentation/ECOv003_L3_L4_JET_ATBD.sh
 	# Run the shell script to compile the User Guide to PDF
 	bash documentation/ECOv003_L3_L4_JET_User_Guide.sh
+
+repomix:
+	npx repomix --ignore "**/*.pdf,**/*.jpeg,**/*.dat,**/*.ipynb,**/*.tex"
