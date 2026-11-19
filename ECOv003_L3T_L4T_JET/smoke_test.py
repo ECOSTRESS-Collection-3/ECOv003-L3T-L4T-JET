@@ -9,9 +9,8 @@ Usage:
     ECOv003_L3T_L4T_JET.test()
 """
 
-import sys
 import importlib
-from typing import List, Tuple
+import sys
 
 
 def test() -> bool:
@@ -28,9 +27,6 @@ def test() -> bool:
 
     Returns:
         bool: True if all tests pass, False otherwise
-
-    Raises:
-        SystemExit: Exits with code 0 on success, 1 on failure
     """
     print("=" * 70)
     print("ECOv003-L3T-L4T-JET Package Smoke Test")
@@ -42,8 +38,8 @@ def test() -> bool:
 
     # Test 1: Python version
     print("[TEST] Python Version Compatibility")
-    if sys.version_info < (3, 11):
-        print(f"  ✗ FAIL: Python {sys.version_info.major}.{sys.version_info.minor} is below minimum required 3.11")
+    if sys.version_info < (3, 12):
+        print(f"  ✗ FAIL: Python {sys.version_info.major}.{sys.version_info.minor} is below minimum required 3.12")
         all_passed = False
     else:
         print(f"  ✓ PASS: Python {sys.version_info.major}.{sys.version_info.minor}")
@@ -52,7 +48,7 @@ def test() -> bool:
     # Test 2: Package import
     print("[TEST] Main Package Import")
     try:
-        import ECOv003_L3T_L4T_JET
+        import ECOv003_L3T_L4T_JET  # noqa: F401
         print("  ✓ PASS: ECOv003_L3T_L4T_JET imported successfully")
     except ImportError as e:
         print(f"  ✗ FAIL: Failed to import ECOv003_L3T_L4T_JET: {e}")
@@ -62,10 +58,12 @@ def test() -> bool:
     # Test 3: Core modules
     print("[TEST] Core Modules Import")
     core_modules = [
-        'ECOv003_L3T_L4T_JET.PGE',
+        'ECOv003_L3T_L4T_JET.ECOv003_L3T_L4T_JET',
         'ECOv003_L3T_L4T_JET.L3TL4TJETConfig',
         'ECOv003_L3T_L4T_JET.constants',
-        'ECOv003_L3T_L4T_JET.exceptions',
+        'ECOv003_L3T_L4T_JET.read_ECOv003_configuration',
+        'ECOv003_L3T_L4T_JET.read_ECOv003_inputs',
+        'ECOv003_L3T_L4T_JET.write_ECOv003_products',
     ]
     core_ok = True
     for module_name in core_modules:

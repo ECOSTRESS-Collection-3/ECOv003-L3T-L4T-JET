@@ -1,27 +1,32 @@
+import logging
 from os.path import abspath, expanduser, join
 
-import logging
 import colored_logging as cl
+from ECOv003_exit_codes import (
+    ECOSTRESSExitCodeException,
+    MissingRunConfigValue,
+    UnableToParseRunConfig,
+)
+from ECOv003_granules import L2TLSTE, L3TETAUX, L3TJET, L4TESI, L4TWUE
 
-from ECOv003_granules import L2TLSTE
-from ECOv003_granules import L3TJET, L3TETAUX, L4TESI, L4TWUE
-
-from ECOv003_exit_codes import *
-
+from .constants import (
+    DEFAULT_GEDI_DIRECTORY,
+    DEFAULT_GEOS5FP_DIRECTORY,
+    DEFAULT_MCD12C1_DIRECTORY,
+    DEFAULT_MODISCI_DIRECTORY,
+    DEFAULT_SOIL_GRIDS_DIRECTORY,
+)
+from .runconfig import ECOSTRESSRunConfig, read_runconfig
 from .version import __version__
-from .constants import *
-
-from .runconfig import read_runconfig, ECOSTRESSRunConfig
 
 logger = logging.getLogger(__name__)
 
+
 class L3TL4TJETConfig(ECOSTRESSRunConfig):
-    def __init__(self, filename: str, collection: str = "003"):
+    def __init__(self, filename: str):
         try:
             logger.info(f"loading L3T_L4T_JET run-config: {cl.file(filename)}")
             runconfig = read_runconfig(filename)
-
-            # reverting to StaticAncillaryFileGroup for now instead of StaticAuxiliaryFileGroup
 
             if "StaticAncillaryFileGroup" not in runconfig:
                 raise MissingRunConfigValue(

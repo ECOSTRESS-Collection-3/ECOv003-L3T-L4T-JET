@@ -3,38 +3,34 @@ Module for reading and processing ECOv003 input data and meteorological variable
 
 This module contains the read_ECOv003_inputs function which loads and processes
 input granules (L2T LSTE and L2T STARS), retrieves meteorological data from GEOS-5 FP,
-runs FLiES-ANN for solar radiation, and optionally sharpens meteorological and soil
-moisture data.
+and optionally sharpens meteorological and soil moisture data.
 """
 
 import logging
 from datetime import datetime
 from os.path import basename, exists
 
-import numpy as np
-import rasters as rt
-from rasters import Raster, RasterGeometry
-
-from check_distribution import check_distribution
-
 import colored_logging as cl
-from solar_apparent_time import solar_hour_of_day_for_area, solar_day_of_year_for_area
-from koppengeiger import load_koppen_geiger
-from FLiESANN import FLiESANN
-from GEOS5FP import GEOS5FP
-from sun_angles import calculate_SZA_from_DOY_and_hour
-from MODISCI import MODISCI
-
-from ECOv003_granules import L2TLSTE, L2TSTARS
+import numpy as np
+from check_distribution import check_distribution
 from ECOv002_granules import L2TLSTE as ECOv002L2TLSTE
 from ECOv002_granules import L2TSTARS as ECOv002L2TSTARS
+from ECOv003_granules import L2TLSTE, L2TSTARS
+from GEOS5FP import GEOS5FP
+from JET3 import (
+    DaytimeFilter,
+    InputFilesInaccessible,
+    sharpen_meteorology_data,
+    sharpen_soil_moisture_data,
+)
+from koppengeiger import load_koppen_geiger
+from MODISCI import MODISCI
+from rasters import RasterGeometry
+from solar_apparent_time import solar_day_of_year_for_area, solar_hour_of_day_for_area
+from sun_angles import calculate_SZA_from_DOY_and_hour
 
-from JET3 import InputFilesInaccessible, DaytimeFilter, BlankOutput
-from JET3 import sharpen_meteorology_data
-from JET3 import sharpen_soil_moisture_data
-
+from .constants import GEOS_IN_SENTINEL_COARSE_CELL_SIZE, SZA_DEGREE_CUTOFF
 from .version import __version__
-from .constants import SZA_DEGREE_CUTOFF, GEOS_IN_SENTINEL_COARSE_CELL_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -57,12 +53,11 @@ def read_ECOv003_inputs(
         downsampling: str) -> dict:
     """
     Read and process ECOv003 input data from L2T LSTE and L2T STARS granules.
-    
+
     This function loads input granules, retrieves meteorological data from GEOS-5 FP,
-    sharpens meteorology and soil moisture (if enabled), and prepares all necessary 
-    inputs for FLiES-ANN solar radiation modeling.
-    Note: FLiES-ANN is called in the main L3T_L4T_JET function, not here.
-    
+    sharpens meteorology and soil moisture (if enabled), and prepares all necessary
+    inputs for FLiES-ANN solar radiation modeling and JET processing.
+
     Args:
         L2T_LSTE_filename: Path to the L2T LSTE input file.
         L2T_STARS_filename: Path to the L2T STARS input file.
@@ -79,7 +74,7 @@ def read_ECOv003_inputs(
         sharpen_soil_moisture: Whether to sharpen soil moisture.
         upsampling: Upsampling method for spatial resampling.
         downsampling: Downsampling method for spatial resampling.
-    
+
     Returns:
         A dictionary containing input variables and metadata needed for FLiES-ANN and subsequent processing:
         - metadata: Product metadata dictionary
@@ -151,7 +146,7 @@ def read_ECOv003_inputs(
     time_solar = L2T_LSTE_granule.time_solar
     logger.info(
         f"orbit {cl.val(orbit)} scene {cl.val(scene)} tile {cl.place(tile)} overpass time: {cl.time(time_UTC)} UTC ({cl.time(time_solar)} solar)")
-    
+
     # Calculate solar time variables
     hour_of_day = solar_hour_of_day_for_area(time_UTC=time_UTC, geometry=geometry)
     day_of_year = solar_day_of_year_for_area(time_UTC=time_UTC, geometry=geometry)
@@ -227,11 +222,11 @@ def read_ECOv003_inputs(
 
     # Calculate derived variables needed for later processing
     KG_climate = load_koppen_geiger(albedo.geometry)
-    
+
     # Apply COT correction if requested
     if zero_COT_correction:
         COT = COT * 0.0
-    
+
     elevation_m = elevation_km * 1000
 
     # Create coarse geometry
