@@ -249,7 +249,7 @@ def L3T_L4T_JET(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Builds and returns the argparse parser with sub-commands."""
+    """Builds and returns the argparse parser."""
     parser = argparse.ArgumentParser(
         prog="ECOv003-L3T-L4T-JET",
         description="L3T/L4T JET PGE command-line interface.",
@@ -261,17 +261,12 @@ def build_parser() -> argparse.ArgumentParser:
         version=f"%(prog)s {__version__}",
         help="Show program's version number and exit.",
     )
-
-    subparsers = parser.add_subparsers(dest="subcommand")
-
-    # 'test' sub-command
-    subparsers.add_parser(
-        "test",
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        default=False,
         help="Run smoke test suite from .smoke_test",
-        description="Execute the test() smoke test routine.",
     )
-
-    # Main processing arguments on root parser
     parser.add_argument(
         "runconfig_filename",
         nargs="?",
@@ -321,10 +316,16 @@ def main(argv=None):
     elif len(argv) > 0 and argv[0] == sys.argv[0]:
         argv = argv[1:]
 
+    if len(argv) > 0 and argv[0] == "test":
+        result = run_smoke_test()
+        if isinstance(result, int):
+            return result
+        return SUCCESS_EXIT_CODE if result or result is None else 1
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.subcommand == "test":
+    if args.test:
         result = run_smoke_test()
         if isinstance(result, int):
             return result
