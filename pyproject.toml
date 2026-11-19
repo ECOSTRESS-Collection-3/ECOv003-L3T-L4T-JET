@@ -78,5 +78,7 @@ filterwarnings = [
     "ignore:numpy.ndarray size changed:RuntimeWarning",
     "ignore:The 'shapely.geos' module is deprecated:DeprecationWarning",
     # Suppress warnings from external daylight_evapotranspiration library
-    "ignore:invalid value encountered in divide:RuntimeWarning:daylight_evapotranspiration"
+    "ignore:invalid value encountered in divide:RuntimeWarning:daylight_evapotranspiration",
+    # Suppress pandas 3.1+ deprecation warning from external ECOv002_calval_tables library
+    "ignore:The 'mode.chained_assignment' option is deprecated:pandas.errors.Pandas4Warning:ECOv002_calval_tables"
 ]

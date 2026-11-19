@@ -109,7 +109,7 @@ docker-smoke-test: docker-build-runtime
 	@echo "=== Running Container Smoke Tests ==="
 	docker run --rm $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_NAME):latest python -c "import ECOv003_L3T_L4T_JET; raise SystemExit(0 if ECOv003_L3T_L4T_JET.test() else 1)"
 	docker run --rm $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_NAME):latest ECOv003-L3T-L4T-JET test
-	docker run --rm $(DOCKER_RUN_FLAGS) -v "$(PWD)/tests:/tests:ro" $(DOCKER_IMAGE_NAME):latest pytest /tests/test_docker_smoke.py /tests/test_import_dependencies.py -vv
+	docker run --rm $(DOCKER_RUN_FLAGS) -v "$(PWD)/tests:/tests:ro" $(DOCKER_IMAGE_NAME):latest pytest /tests/test_docker_smoke.py /tests/test_import_dependencies.py -p no:cacheprovider -p no:warnings -vv
 
 # Granular cache-busting rebuilds (--no-cache-filter)
 docker-rebuild-toolchain:
