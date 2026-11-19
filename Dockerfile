@@ -48,14 +48,21 @@ RUN --mount=type=cache,target=/opt/conda/pkgs/cache \
 FROM toolchain AS build
 
 WORKDIR /tmp/src
-COPY . /tmp/src/
 
-RUN pip list --format=freeze | grep -E '^(numpy|scipy|rasterio|shapely|h5py|pandas|matplotlib|pyproj|scikit-learn)==' > /tmp/conda-constraints.txt && \
+# 1. Install third-party & dev dependencies first (cached unless pyproject.toml changes)
+COPY ./pyproject.toml /tmp/src/pyproject.toml
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip list --format=freeze | grep -E '^(numpy|scipy|rasterio|shapely|h5py|pandas|matplotlib|pyproj|scikit-learn)==' > /tmp/conda-constraints.txt && \
+    python -c "import tomllib; d = tomllib.load(open('pyproject.toml', 'rb')); deps = d['project']['dependencies'] + d['project'].get('optional-dependencies', {}).get('dev', []); open('/tmp/reqs.txt', 'w').write('\n'.join(deps))" && \
     pip install \
-      --no-cache-dir \
       --upgrade-strategy only-if-needed \
       -c /tmp/conda-constraints.txt \
-      .[dev] && \
+      -r /tmp/reqs.txt && \
+    rm -f /tmp/reqs.txt
+
+# 2. Install only ECOv003-L3T-L4T-JET itself (fast rebuild when source code changes)
+COPY . /tmp/src/
+RUN pip install --no-cache-dir --no-deps . && \
     rm -rf /tmp/src /tmp/conda-constraints.txt
 
 # ==============================================================================
