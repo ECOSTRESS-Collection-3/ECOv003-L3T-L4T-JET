@@ -7,17 +7,14 @@ extracts all necessary paths and parameters, and performs initial validation che
 
 import logging
 from datetime import datetime
-from os.path import exists, basename
+from os.path import exists, join
 
 import colored_logging as cl
+from ECOv003_exit_codes import SUCCESS_EXIT_CODE
+from JET3.exceptions import InputFilesInaccessible
 from pytictoc import TicToc
 
-from ECOv003_granules import L2TLSTE
-from ECOv002_granules import L2TLSTE as ECOv002L2TLSTE
-from ECOv003_exit_codes import SUCCESS_EXIT_CODE
-
 from .L3TL4TJETConfig import L3TL4TJETConfig
-from JET3.exceptions import InputFilesInaccessible
 
 logger = logging.getLogger(__name__)
 
@@ -28,89 +25,17 @@ def read_ECOv003_configuration(
         overwrite: bool = False) -> dict:
     """
     Read and process ECOv003 L3T/L4T JET run configuration.
-    
-    This function loads the run configuration from an XML file, extracts all necessary
-    paths and parameters, sets up logging, and performs initial validation checks to
-    determine if processing should proceed.
-    
-    Parameters
-    ----------
-    runconfig_filename : str
-        Path to the run configuration XML file
-    strip_console : bool, optional
-        Whether to strip console output formatting (default: False)
-    overwrite : bool, optional
-        Whether to overwrite existing output files (default: False)
-        
-    Returns
-    -------
-    dict
-        Dictionary containing all configuration parameters and objects:
-        - runconfig: L3TL4TJETConfig object
-        - timer: TicToc timer object
-        - working_directory: str
-        - granule_ID: str
-        - log_filename: str
-        - L3T_JET_granule_ID: str
-        - L3T_JET_directory: str
-        - L3T_JET_zip_filename: str
-        - L3T_JET_browse_filename: str
-        - L3T_ETAUX_directory: str
-        - L3T_ETAUX_zip_filename: str
-        - L3T_ETAUX_browse_filename: str
-        - L4T_ESI_granule_ID: str
-        - L4T_ESI_directory: str
-        - L4T_ESI_zip_filename: str
-        - L4T_ESI_browse_filename: str
-        - L4T_WUE_granule_ID: str
-        - L4T_WUE_directory: str
-        - L4T_WUE_zip_filename: str
-        - L4T_WUE_browse_filename: str
-        - output_directory: str
-        - sources_directory: str
-        - GEOS5FP_directory: str
-        - static_directory: str
-        - GEDI_directory: str
-        - MODISCI_directory: str
-        - MCD12_directory: str
-        - soil_grids_directory: str
-        - orbit: int
-        - scene: int
-        - tile: str
-        - build: str
-        - product_counter: int
-        - L2T_LSTE_filename: str
-        - L2T_STARS_filename: str
-        - L2T_LSTE_granule: L2TLSTE object
-        - geometry: RasterGeometry
-        - time_UTC: datetime
-        - date_UTC: date
-        - timestamp: str
-        - should_exit: bool (whether processing should exit early)
-        - exit_code: int (exit code if should_exit is True)
-        
-    Raises
-    ------
-    InputFilesInaccessible
-        If required input files do not exist
-    ValueError
-        If collection cannot be recognized from L2T LSTE filename
     """
-    from os.path import join
-    
-    # Load run configuration
     runconfig = L3TL4TJETConfig(runconfig_filename)
     working_directory = runconfig.working_directory
     granule_ID = runconfig.granule_ID
     log_filename = join(working_directory, "log", f"{granule_ID}.log")
-    
-    # Configure logging
+
     cl.configure(filename=log_filename, strip_console=strip_console)
-    
-    # Start timer
+
     timer = TicToc()
     timer.tic()
-    
+
     logger.info(f"started L3T L4T JET run at {cl.time(datetime.utcnow())} UTC")
     logger.info(f"L3T_L4T_JET PGE ({cl.val(runconfig.PGE_version)})")
     logger.info(f"L3T_L4T_JET run-config: {cl.file(runconfig_filename)}")
@@ -193,6 +118,8 @@ def read_ECOv003_configuration(
     logger.info(f"GEOS-5 FP directory: {cl.dir(GEOS5FP_directory)}")
     static_directory = runconfig.static_directory
     logger.info(f"static directory: {cl.dir(static_directory)}")
+    SRTM_directory = runconfig.SRTM_directory
+    logger.info(f"SRTM directory: {cl.dir(SRTM_directory)}")
     GEDI_directory = runconfig.GEDI_directory
     logger.info(f"GEDI directory: {cl.dir(GEDI_directory)}")
     MODISCI_directory = runconfig.MODISCI_directory
@@ -221,19 +148,11 @@ def read_ECOv003_configuration(
     L2T_STARS_filename = runconfig.L2T_STARS_filename
     logger.info(f"L2T_STARS file: {cl.file(L2T_STARS_filename)}")
 
-    # Validate L2T LSTE file exists
     if not exists(L2T_LSTE_filename):
         raise InputFilesInaccessible(f"L2T LSTE file does not exist: {L2T_LSTE_filename}")
 
-    # Load L2T LSTE granule and extract geometry/time
-    L2T_LSTE_basename = basename(L2T_LSTE_filename)
-    if "ECOv003" in L2T_LSTE_basename:
-        L2T_LSTE_granule = L2TLSTE(L2T_LSTE_filename)
-    elif "ECOv002" in L2T_LSTE_basename:
-        L2T_LSTE_granule = ECOv002L2TLSTE(L2T_LSTE_filename)
-    else:
-        raise ValueError(f"collection not recognized in L2T LSTE filename: {L2T_LSTE_filename}")
-
+    # Reuse already-loaded L2T LSTE granule from runconfig
+    L2T_LSTE_granule = runconfig.L2T_LSTE_granule
     geometry = L2T_LSTE_granule.geometry
     time_UTC = L2T_LSTE_granule.time_UTC
     logger.info(f"overpass time: {cl.time(time_UTC)} UTC")
@@ -241,7 +160,6 @@ def read_ECOv003_configuration(
     logger.info(f"overpass date: {cl.time(date_UTC)} UTC")
     timestamp = f"{time_UTC:%Y%m%dT%H%M%S}"
 
-    # Return all configuration in a dictionary
     return {
         'runconfig': runconfig,
         'timer': timer,
@@ -267,6 +185,7 @@ def read_ECOv003_configuration(
         'sources_directory': sources_directory,
         'GEOS5FP_directory': GEOS5FP_directory,
         'static_directory': static_directory,
+        'SRTM_directory': SRTM_directory,
         'GEDI_directory': GEDI_directory,
         'MODISCI_directory': MODISCI_directory,
         'MCD12_directory': MCD12_directory,

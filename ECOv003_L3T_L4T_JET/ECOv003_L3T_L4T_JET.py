@@ -51,29 +51,6 @@ def L3T_L4T_JET(
         save_diagnostics: bool = False) -> int:
     """
     Processes ECOSTRESS L2T LSTE and L2T STARS granules to produce L3T and L4T JET products (ECOSTRESS Collection 3).
-
-    This function orchestrates the entire processing workflow, including reading run configuration,
-    loading input data, performing meteorological and soil moisture sharpening, running
-    evapotranspiration and gross primary productivity models (FLiES-ANN, BESS-JPL, STIC-JPL, PMJPL, PTJPLSM),
-    calculating daily integrated products, and writing the output granules.
-
-    Args:
-        runconfig_filename: Path to the XML run configuration file.
-        upsampling: Upsampling method for spatial resampling (e.g., 'average', 'linear'). Defaults to 'average'.
-        downsampling: Downsampling method for spatial resampling (e.g., 'linear', 'average'). Defaults to 'linear'.
-        Rn_model_name: Model to use for net radiation ('verma', 'BESS'). Defaults to RN_MODEL_NAME.
-        zero_COT_correction: Whether to set Cloud Optical Thickness to zero for correction. Defaults to ZERO_COT_CORRECTION.
-        sharpen_meteorology: Whether to sharpen meteorological variables using a regression model. Defaults to SHARPEN_METEOROLOGY.
-        sharpen_soil_moisture: Whether to sharpen soil moisture using a regression model. Defaults to SHARPEN_SOIL_MOISTURE.
-        strip_console: Whether to strip console output from the logger. Defaults to STRIP_CONSOLE.
-        save_intermediate: Whether to save intermediate processing steps. Defaults to SAVE_INTERMEDIATE.
-        show_distribution: Whether to show distribution plots of intermediate and final products. Defaults to SHOW_DISTRIBUTION.
-        overwrite: Whether to overwrite existing output files. If False, skips processing if all output files exist. Defaults to False.
-        diagnostics_directory: Directory in which to save diagnostic GeoTIFFs when save_diagnostics is True. Defaults to None.
-        save_diagnostics: Whether to save intermediate and output rasters to disk as GeoTIFF files. Defaults to False.
-
-    Returns:
-        An integer representing the exit code of the process.
     """
     exit_code = SUCCESS_EXIT_CODE
 
@@ -82,6 +59,10 @@ def L3T_L4T_JET(
 
     if downsampling is None:
         downsampling = "linear"
+
+    if save_intermediate and not save_diagnostics:
+        logger.warning("--save-intermediate is deprecated; enabling save_diagnostics")
+        save_diagnostics = True
 
     try:
         config = read_ECOv003_configuration(
@@ -104,6 +85,7 @@ def L3T_L4T_JET(
         scene = config['scene']
         tile = config['tile']
         L2T_LSTE_filename = config['L2T_LSTE_filename']
+        L2T_LSTE_granule = config['L2T_LSTE_granule']
         L2T_STARS_filename = config['L2T_STARS_filename']
         geometry = config['geometry']
         time_UTC = config['time_UTC']
@@ -124,7 +106,8 @@ def L3T_L4T_JET(
             sharpen_meteorology=sharpen_meteorology,
             sharpen_soil_moisture=sharpen_soil_moisture,
             upsampling=upsampling,
-            downsampling=downsampling
+            downsampling=downsampling,
+            L2T_LSTE_granule=L2T_LSTE_granule,
         )
 
         metadata = inputs['metadata']
@@ -311,7 +294,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--save-intermediate",
         action="store_true",
         default=SAVE_INTERMEDIATE,
-        help="Save intermediate processing steps",
+        help="Deprecated alias for --save-diagnostics",
     )
     parser.add_argument(
         "--show-distribution",
@@ -332,31 +315,21 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None):
     """
     Main function to parse command line arguments and execute the selected action.
-
-    Args:
-        argv: Command line arguments. Defaults to sys.argv[1:].
-
-    Returns:
-        An integer representing the exit code.
     """
     if argv is None:
         argv = sys.argv[1:]
     elif len(argv) > 0 and argv[0] == sys.argv[0]:
-        # Handle passing full sys.argv with program name included
         argv = argv[1:]
 
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    # Route: 'test' sub-command
     if args.subcommand == "test":
         result = run_smoke_test()
-        # Interpret boolean or integer returns from test()
         if isinstance(result, int):
             return result
         return SUCCESS_EXIT_CODE if result or result is None else 1
 
-    # Route: Main processing run
     if not args.runconfig_filename:
         parser.print_usage()
         return RUNCONFIG_FILENAME_NOT_SUPPLIED

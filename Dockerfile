@@ -16,9 +16,6 @@ RUN mkdir /app
 
 # Copying current snapshot of PGE code repository into container
 COPY . /app/
-
-# Running pip install using pyproject.toml
-COPY pyproject.toml /app/pyproject.toml
 WORKDIR /app
 
 FROM installation AS build
@@ -28,10 +25,4 @@ RUN rm -rvf build; rm -rvf dist; rm -rvf *.egg-info
 # Docker smoke test stage - validates package installation and environment compatibility
 FROM build AS smoke-test
 WORKDIR /app
-RUN echo "=== Running Docker Smoke Tests ===" && \
-    echo "Python version: $(python --version)" && \
-    echo "Package installation check..." && \
-    python -c "import ECOv003_L3T_L4T_JET; print('✓ ECOv003_L3T_L4T_JET package imported successfully')" && \
-    echo "Running smoke test..." && \
-    python -c "import ECOv003_L3T_L4T_JET; ECOv003_L3T_L4T_JET.test()" && \
-    echo "=== All Smoke Tests Passed ✓ ==="
+RUN echo "=== Running Docker Smoke Tests ===" &&     echo "Python version: $(python --version)" &&     echo "Package installation check..." &&     python -c "import ECOv003_L3T_L4T_JET; print('✓ ECOv003_L3T_L4T_JET package imported successfully')" &&     echo "Running smoke test..." &&     python -c "import ECOv003_L3T_L4T_JET; ECOv003_L3T_L4T_JET.test()" &&     echo "=== All Smoke Tests Passed ✓ ==="
