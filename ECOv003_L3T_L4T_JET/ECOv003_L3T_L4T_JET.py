@@ -318,7 +318,7 @@ def main(argv=None):
 
     if len(argv) > 0 and argv[0] == "test":
         result = run_smoke_test()
-        if isinstance(result, int):
+        if isinstance(result, int) and not isinstance(result, bool):
             return result
         return SUCCESS_EXIT_CODE if result or result is None else 1
 
@@ -327,7 +327,7 @@ def main(argv=None):
 
     if args.test:
         result = run_smoke_test()
-        if isinstance(result, int):
+        if isinstance(result, int) and not isinstance(result, bool):
             return result
         return SUCCESS_EXIT_CODE if result or result is None else 1
 
