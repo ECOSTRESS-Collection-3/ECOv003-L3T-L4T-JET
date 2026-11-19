@@ -5,8 +5,8 @@ This test suite validates that the package was correctly installed in a Docker
 container and that all critical components and dependencies are functional.
 """
 
-import sys
 import importlib
+import sys
 
 
 class TestPackageImport:
@@ -20,10 +20,12 @@ class TestPackageImport:
     def test_core_modules_import(self):
         """Test that core modules are accessible."""
         core_modules = [
-            'ECOv003_L3T_L4T_JET.PGE',
+            'ECOv003_L3T_L4T_JET.ECOv003_L3T_L4T_JET',
             'ECOv003_L3T_L4T_JET.L3TL4TJETConfig',
             'ECOv003_L3T_L4T_JET.constants',
-            'ECOv003_L3T_L4T_JET.exceptions',
+            'ECOv003_L3T_L4T_JET.read_ECOv003_configuration',
+            'ECOv003_L3T_L4T_JET.read_ECOv003_inputs',
+            'ECOv003_L3T_L4T_JET.write_ECOv003_products',
         ]
         for module_name in core_modules:
             module = importlib.import_module(module_name)
@@ -83,7 +85,6 @@ class TestPackageStructure:
             resource = files('ECOv003_L3T_L4T_JET').joinpath('L3T_L4T_JET.xml')
             assert resource.is_file(), "Configuration file 'L3T_L4T_JET.xml' not found in package"
         except Exception:
-            # Fallback: check if we can import and access module
             import ECOv003_L3T_L4T_JET
             assert hasattr(ECOv003_L3T_L4T_JET, '__path__')
 
@@ -95,7 +96,6 @@ class TestPackageStructure:
             pkg_version = version('ECOv003-L3T-L4T-JET')
             assert pkg_version is not None
         except Exception:
-            # Fallback: just verify package has some metadata
             assert hasattr(ECOv003_L3T_L4T_JET, '__doc__')
 
 
@@ -104,7 +104,7 @@ class TestEnvironmentCompatibility:
 
     def test_python_version(self):
         """Test that Python version meets requirements."""
-        assert sys.version_info >= (3, 11), f"Python {sys.version_info.major}.{sys.version_info.minor} is below minimum required 3.11"
+        assert sys.version_info >= (3, 12), f"Python {sys.version_info.major}.{sys.version_info.minor} is below minimum required 3.12"
 
     def test_sys_path_includes_package(self):
         """Test that the package is in Python path."""

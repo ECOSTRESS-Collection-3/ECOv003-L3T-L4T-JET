@@ -1,27 +1,35 @@
-from os.path import abspath, expanduser, join
-
 import logging
+from os.path import abspath, basename, exists, expanduser, join
+
 import colored_logging as cl
+from ECOv002_granules import L2TLSTE as ECOv002L2TLSTE
+from ECOv003_exit_codes import (
+    ECOSTRESSExitCodeException,
+    MissingRunConfigValue,
+    UnableToParseRunConfig,
+)
+from ECOv003_granules import L2TLSTE, L3TETAUX, L3TJET, L4TESI, L4TWUE
+from JET3.exceptions import InputFilesInaccessible
 
-from ECOv003_granules import L2TLSTE
-from ECOv003_granules import L3TJET, L3TETAUX, L4TESI, L4TWUE
-
-from ECOv003_exit_codes import *
-
+from .constants import (
+    DEFAULT_GEDI_DIRECTORY,
+    DEFAULT_GEOS5FP_DIRECTORY,
+    DEFAULT_MCD12C1_DIRECTORY,
+    DEFAULT_MODISCI_DIRECTORY,
+    DEFAULT_SOIL_GRIDS_DIRECTORY,
+    DEFAULT_SRTM_DIRECTORY,
+)
+from .runconfig import ECOSTRESSRunConfig, read_runconfig
 from .version import __version__
-from .constants import *
-
-from .runconfig import read_runconfig, ECOSTRESSRunConfig
 
 logger = logging.getLogger(__name__)
 
+
 class L3TL4TJETConfig(ECOSTRESSRunConfig):
-    def __init__(self, filename: str, collection: str = "003"):
+    def __init__(self, filename: str):
         try:
             logger.info(f"loading L3T_L4T_JET run-config: {cl.file(filename)}")
             runconfig = read_runconfig(filename)
-
-            # reverting to StaticAncillaryFileGroup for now instead of StaticAuxiliaryFileGroup
 
             if "StaticAncillaryFileGroup" not in runconfig:
                 raise MissingRunConfigValue(
@@ -49,6 +57,12 @@ class L3TL4TJETConfig(ECOSTRESSRunConfig):
 
             static_directory = abspath(runconfig["StaticAncillaryFileGroup"]["L3T_L4T_STATIC"])
             logger.info(f"static directory: {cl.dir(static_directory)}")
+
+            if "L3T_L4T_SRTM" in runconfig["StaticAncillaryFileGroup"]:
+                SRTM_directory = abspath(runconfig["StaticAncillaryFileGroup"]["L3T_L4T_SRTM"])
+            else:
+                SRTM_directory = join(working_directory, DEFAULT_SRTM_DIRECTORY)
+            logger.info(f"SRTM directory: {cl.dir(SRTM_directory)}")
 
             if "ProductPathGroup" not in runconfig:
                 raise MissingRunConfigValue(
@@ -107,7 +121,17 @@ class L3TL4TJETConfig(ECOSTRESSRunConfig):
 
             product_counter = int(runconfig["ProductPathGroup"]["ProductCounter"])
 
-            L2T_LSTE_granule = L2TLSTE(L2T_LSTE_filename)
+            if not exists(L2T_LSTE_filename):
+                raise InputFilesInaccessible(f"L2T LSTE file does not exist: {L2T_LSTE_filename}")
+
+            L2T_LSTE_basename = basename(L2T_LSTE_filename)
+            if "ECOv003" in L2T_LSTE_basename:
+                L2T_LSTE_granule = L2TLSTE(L2T_LSTE_filename)
+            elif "ECOv002" in L2T_LSTE_basename:
+                L2T_LSTE_granule = ECOv002L2TLSTE(L2T_LSTE_filename)
+            else:
+                raise ValueError(f"collection not recognized in L2T LSTE filename: {L2T_LSTE_filename}")
+
             time_UTC = L2T_LSTE_granule.time_UTC
             granule_ID = L3TJET.generate_granule_name(
                 orbit,
@@ -167,12 +191,14 @@ class L3TL4TJETConfig(ECOSTRESSRunConfig):
             self.sources_directory = sources_directory
             self.GEOS5FP_directory = GEOS5FP_directory
             self.static_directory = static_directory
+            self.SRTM_directory = SRTM_directory
             self.GEDI_directory = GEDI_directory
             self.MODISCI_directory = MODISCI_directory
             self.MCD12_directory = MCD12_directory
             self.soil_grids_directory = soil_grids_directory
             self.output_directory = output_directory
             self.L2T_LSTE_filename = L2T_LSTE_filename
+            self.L2T_LSTE_granule = L2T_LSTE_granule
             self.L2T_STARS_filename = L2T_STARS_filename
             self.orbit = orbit
             self.scene = scene
@@ -204,7 +230,7 @@ class L3TL4TJETConfig(ECOSTRESSRunConfig):
 
             self.PGE_name = PGE_name
             self.PGE_version = PGE_version
-        except MissingRunConfigValue as e:
+        except (MissingRunConfigValue, InputFilesInaccessible) as e:
             raise e
         except ECOSTRESSExitCodeException as e:
             raise e

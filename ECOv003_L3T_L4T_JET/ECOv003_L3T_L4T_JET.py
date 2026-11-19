@@ -7,22 +7,30 @@ from os.path import basename, join
 import colored_logging as cl
 
 from GEOS5FP import FailedGEOS5FPDownload
+from ECOv003_exit_codes import (
+    AUXILIARY_SERVER_UNREACHABLE,
+    BLANK_OUTPUT,
+    ECOSTRESSExitCodeException,
+    RUNCONFIG_FILENAME_NOT_SUPPLIED,
+    SUCCESS_EXIT_CODE,
+)
+from JET3 import BlankOutput, JET
 
-from ECOv003_L3T_L4T_JET.write_ECOv003_products import write_ECOv003_products
-from ECOv003_exit_codes import *
-
-from JET3 import JET
-from JET3 import process_JET_table
-from JET3 import verify
-from JET3 import load_ECOv002_calval_JET_inputs
-
-from .version import __version__
-from .constants import *
-from .exceptions import *
-from .read_ECOv003_inputs import read_ECOv003_inputs
+from .constants import (
+    DEFAULT_DIAGNOSTICS_DIRECTORY,
+    RN_MODEL_NAME,
+    SAVE_INTERMEDIATE,
+    SHARPEN_METEOROLOGY,
+    SHARPEN_SOIL_MOISTURE,
+    SHOW_DISTRIBUTION,
+    STRIP_CONSOLE,
+    ZERO_COT_CORRECTION,
+)
 from .read_ECOv003_configuration import read_ECOv003_configuration
-from .generate_L3T_L4T_JET_runconfig import generate_L3T_L4T_JET_runconfig
+from .read_ECOv003_inputs import read_ECOv003_inputs
 from .smoke_test import test as run_smoke_test
+from .version import __version__
+from .write_ECOv003_products import write_ECOv003_products
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +40,12 @@ def L3T_L4T_JET(
         upsampling: str = None,
         downsampling: str = None,
         Rn_model_name: str = RN_MODEL_NAME,
-        include_SEB_diagnostics: bool = INCLUDE_SEB_DIAGNOSTICS,
-        include_JET_diagnostics: bool = INCLUDE_JET_DIAGNOSTICS,
         zero_COT_correction: bool = ZERO_COT_CORRECTION,
         sharpen_meteorology: bool = SHARPEN_METEOROLOGY,
         sharpen_soil_moisture: bool = SHARPEN_SOIL_MOISTURE,
         strip_console: bool = STRIP_CONSOLE,
         save_intermediate: bool = SAVE_INTERMEDIATE,
         show_distribution: bool = SHOW_DISTRIBUTION,
-        floor_Topt: bool = FLOOR_TOPT,
         overwrite: bool = False,
         diagnostics_directory: str = None,
         save_diagnostics: bool = False) -> int:
@@ -55,6 +60,10 @@ def L3T_L4T_JET(
     if downsampling is None:
         downsampling = "linear"
 
+    if save_intermediate and not save_diagnostics:
+        logger.warning("--save-intermediate is deprecated; enabling save_diagnostics")
+        save_diagnostics = True
+
     try:
         config = read_ECOv003_configuration(
             runconfig_filename=runconfig_filename,
@@ -68,43 +77,19 @@ def L3T_L4T_JET(
         runconfig = config['runconfig']
         timer = config['timer']
         working_directory = config['working_directory']
-        granule_ID = config['granule_ID']
-        log_filename = config['log_filename']
-        L3T_JET_granule_ID = config['L3T_JET_granule_ID']
-        L3T_JET_directory = config['L3T_JET_directory']
-        L3T_JET_zip_filename = config['L3T_JET_zip_filename']
-        L3T_JET_browse_filename = config['L3T_JET_browse_filename']
-        L3T_ETAUX_directory = config['L3T_ETAUX_directory']
-        L3T_ETAUX_zip_filename = config['L3T_ETAUX_zip_filename']
-        L3T_ETAUX_browse_filename = config['L3T_ETAUX_browse_filename']
-        L4T_ESI_granule_ID = config['L4T_ESI_granule_ID']
-        L4T_ESI_directory = config['L4T_ESI_directory']
-        L4T_ESI_zip_filename = config['L4T_ESI_zip_filename']
-        L4T_ESI_browse_filename = config['L4T_ESI_browse_filename']
-        L4T_WUE_granule_ID = config['L4T_WUE_granule_ID']
-        L4T_WUE_directory = config['L4T_WUE_directory']
-        L4T_WUE_zip_filename = config['L4T_WUE_zip_filename']
-        L4T_WUE_browse_filename = config['L4T_WUE_browse_filename']
-        output_directory = config['output_directory']
-        sources_directory = config['sources_directory']
         GEOS5FP_directory = config['GEOS5FP_directory']
-        static_directory = config['static_directory']
         GEDI_directory = config['GEDI_directory']
         MODISCI_directory = config['MODISCI_directory']
-        MCD12_directory = config['MCD12_directory']
         soil_grids_directory = config['soil_grids_directory']
         orbit = config['orbit']
         scene = config['scene']
         tile = config['tile']
-        build = config['build']
-        product_counter = config['product_counter']
         L2T_LSTE_filename = config['L2T_LSTE_filename']
-        L2T_STARS_filename = config['L2T_STARS_filename']
         L2T_LSTE_granule = config['L2T_LSTE_granule']
+        L2T_STARS_filename = config['L2T_STARS_filename']
         geometry = config['geometry']
         time_UTC = config['time_UTC']
         date_UTC = config['date_UTC']
-        timestamp = config['timestamp']
 
         inputs = read_ECOv003_inputs(
             L2T_LSTE_filename=L2T_LSTE_filename,
@@ -121,13 +106,12 @@ def L3T_L4T_JET(
             sharpen_meteorology=sharpen_meteorology,
             sharpen_soil_moisture=sharpen_soil_moisture,
             upsampling=upsampling,
-            downsampling=downsampling
+            downsampling=downsampling,
+            L2T_LSTE_granule=L2T_LSTE_granule,
         )
 
         metadata = inputs['metadata']
-        ST_K = inputs['ST_K']
         ST_C = inputs['ST_C']
-        elevation_km = inputs['elevation_km']
         elevation_m = inputs['elevation_m']
         emissivity = inputs['emissivity']
         water_mask = inputs['water_mask']
@@ -141,19 +125,10 @@ def L3T_L4T_JET(
         COT = inputs['COT']
         vapor_gccm = inputs['vapor_gccm']
         ozone_cm = inputs['ozone_cm']
-        hour_of_day = inputs['hour_of_day']
-        day_of_year = inputs['day_of_year']
-        time_solar = inputs['time_solar']
         KG_climate = inputs['KG_climate']
-        coarse_geometry = inputs['coarse_geometry']
         Ta_C = inputs['Ta_C']
-        Ta_C_smooth = inputs['Ta_C_smooth']
         RH = inputs['RH']
         soil_moisture = inputs['SM']
-        SVP_Pa = inputs['SVP_Pa']
-        Ea_Pa = inputs['Ea_Pa']
-        Ea_kPa = inputs['Ea_kPa']
-        Ta_K = inputs['Ta_K']
 
         results = JET(
             ST_C=ST_C,
@@ -181,15 +156,6 @@ def L3T_L4T_JET(
             downsampling=downsampling,
         )
 
-        SWin_TOA_Wm2 = results["SWin_TOA_Wm2"]
-        SWin_FLiES_ANN_raw = results["SWin_FLiES_ANN_raw"]
-        UV_Wm2 = results["UV_Wm2"]
-        PAR_Wm2 = results["PAR_Wm2"]
-        NIR_Wm2 = results["NIR_Wm2"]
-        PAR_diffuse_Wm2 = results["PAR_diffuse_Wm2"]
-        NIR_diffuse_Wm2 = results["NIR_diffuse_Wm2"]
-        PAR_direct_Wm2 = results["PAR_direct_Wm2"]
-        NIR_direct_Wm2 = results["NIR_direct_Wm2"]
         LE_PTJPLSM_Wm2 = results["LE_PTJPLSM_Wm2"]
         ET_daylight_PTJPLSM_kg = results["ET_daylight_PTJPLSM_kg"]
         LE_STIC_Wm2 = results["LE_STIC_Wm2"]
@@ -249,7 +215,7 @@ def L3T_L4T_JET(
 
         if save_diagnostics:
             if diagnostics_directory is None:
-                diagnostics_directory = join(working_directory, DEFULT_DIAGNOSTICS_DIRECTORY)
+                diagnostics_directory = join(working_directory, DEFAULT_DIAGNOSTICS_DIRECTORY)
 
             makedirs(diagnostics_directory, exist_ok=True)
             logger.info(f"saving diagnostic GeoTIFFs to: {cl.dir(diagnostics_directory)}")
@@ -267,11 +233,11 @@ def L3T_L4T_JET(
 
         logger.info(f"finished L3T L4T JET run in {cl.time(timer.tocvalue())} seconds")
 
-    except (BlankOutput, BlankOutputError) as exception:
+    except BlankOutput as exception:
         logger.exception(exception)
         exit_code = BLANK_OUTPUT
 
-    except (FailedGEOS5FPDownload, ConnectionError, LPDAACServerUnreachable) as exception:
+    except (FailedGEOS5FPDownload, ConnectionError) as exception:
         logger.exception(exception)
         exit_code = AUXILIARY_SERVER_UNREACHABLE
 
@@ -283,29 +249,24 @@ def L3T_L4T_JET(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Builds and returns the argparse parser with sub-commands."""
+    """Builds and returns the argparse parser."""
     parser = argparse.ArgumentParser(
         prog="ECOv003-L3T-L4T-JET",
         description="L3T/L4T JET PGE command-line interface.",
     )
-    
+
     parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
         help="Show program's version number and exit.",
     )
-
-    subparsers = parser.add_subparsers(dest="subcommand")
-
-    # 'test' sub-command
-    subparsers.add_parser(
-        "test",
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        default=False,
         help="Run smoke test suite from .smoke_test",
-        description="Execute the test() smoke test routine.",
     )
-
-    # Main processing arguments on root parser
     parser.add_argument(
         "runconfig_filename",
         nargs="?",
@@ -328,7 +289,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--save-intermediate",
         action="store_true",
         default=SAVE_INTERMEDIATE,
-        help="Save intermediate processing steps",
+        help="Deprecated alias for --save-diagnostics",
     )
     parser.add_argument(
         "--show-distribution",
@@ -349,31 +310,27 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None):
     """
     Main function to parse command line arguments and execute the selected action.
-
-    Args:
-        argv: Command line arguments. Defaults to sys.argv[1:].
-
-    Returns:
-        An integer representing the exit code.
     """
     if argv is None:
         argv = sys.argv[1:]
     elif len(argv) > 0 and argv[0] == sys.argv[0]:
-        # Handle passing full sys.argv with program name included
         argv = argv[1:]
 
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
-    # Route: 'test' sub-command
-    if args.subcommand == "test":
+    if len(argv) > 0 and argv[0] == "test":
         result = run_smoke_test()
-        # Interpret boolean or integer returns from test()
         if isinstance(result, int):
             return result
         return SUCCESS_EXIT_CODE if result or result is None else 1
 
-    # Route: Main processing run
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.test:
+        result = run_smoke_test()
+        if isinstance(result, int):
+            return result
+        return SUCCESS_EXIT_CODE if result or result is None else 1
+
     if not args.runconfig_filename:
         parser.print_usage()
         return RUNCONFIG_FILENAME_NOT_SUPPLIED

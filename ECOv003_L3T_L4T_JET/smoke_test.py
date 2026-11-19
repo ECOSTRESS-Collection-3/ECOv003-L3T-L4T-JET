@@ -3,47 +3,27 @@ Smoke test module for ECOv003-L3T-L4T-JET package.
 
 Provides a top-level test() function to validate package installation
 and environment compatibility.
-
-Usage:
-    import ECOv003_L3T_L4T_JET
-    ECOv003_L3T_L4T_JET.test()
 """
 
-import sys
 import importlib
-from typing import List, Tuple
+import sys
 
 
 def test() -> bool:
     """
     Run smoke tests to validate package installation and environment compatibility.
-
-    This function tests:
-    - Package imports
-    - Core module availability
-    - Critical dependency availability
-    - Entry point functionality
-    - Python version requirements
-    - Package structure and metadata
-
-    Returns:
-        bool: True if all tests pass, False otherwise
-
-    Raises:
-        SystemExit: Exits with code 0 on success, 1 on failure
     """
     print("=" * 70)
     print("ECOv003-L3T-L4T-JET Package Smoke Test")
     print("=" * 70)
     print()
 
-    # Track results
     all_passed = True
 
     # Test 1: Python version
     print("[TEST] Python Version Compatibility")
-    if sys.version_info < (3, 11):
-        print(f"  ✗ FAIL: Python {sys.version_info.major}.{sys.version_info.minor} is below minimum required 3.11")
+    if sys.version_info < (3, 12):
+        print(f"  ✗ FAIL: Python {sys.version_info.major}.{sys.version_info.minor} is below minimum required 3.12")
         all_passed = False
     else:
         print(f"  ✓ PASS: Python {sys.version_info.major}.{sys.version_info.minor}")
@@ -52,7 +32,7 @@ def test() -> bool:
     # Test 2: Package import
     print("[TEST] Main Package Import")
     try:
-        import ECOv003_L3T_L4T_JET
+        import ECOv003_L3T_L4T_JET  # noqa: F401
         print("  ✓ PASS: ECOv003_L3T_L4T_JET imported successfully")
     except ImportError as e:
         print(f"  ✗ FAIL: Failed to import ECOv003_L3T_L4T_JET: {e}")
@@ -62,10 +42,14 @@ def test() -> bool:
     # Test 3: Core modules
     print("[TEST] Core Modules Import")
     core_modules = [
-        'ECOv003_L3T_L4T_JET.PGE',
+        'ECOv003_L3T_L4T_JET.ECOv003_L3T_L4T_JET',
         'ECOv003_L3T_L4T_JET.L3TL4TJETConfig',
         'ECOv003_L3T_L4T_JET.constants',
-        'ECOv003_L3T_L4T_JET.exceptions',
+        'ECOv003_L3T_L4T_JET.generate_L3T_L4T_JET_runconfig',
+        'ECOv003_L3T_L4T_JET.read_ECOv003_configuration',
+        'ECOv003_L3T_L4T_JET.read_ECOv003_inputs',
+        'ECOv003_L3T_L4T_JET.runconfig',
+        'ECOv003_L3T_L4T_JET.write_ECOv003_products',
     ]
     core_ok = True
     for module_name in core_modules:
@@ -88,9 +72,15 @@ def test() -> bool:
         'numpy': 'NumPy',
         'pandas': 'Pandas',
         'rasterio': 'Rasterio',
+        'onnx': 'ONNX',
         'onnxruntime': 'ONNX Runtime',
         'sklearn': 'scikit-learn',
+        'skl2onnx': 'skl2onnx',
         'rasters': 'Rasters',
+        'JET3': 'JET3',
+        'ECOv003_granules': 'ECOv003 Granules',
+        'ECOv003_exit_codes': 'ECOv003 Exit Codes',
+        'GEOS5FP': 'GEOS5FP',
     }
     deps_ok = True
     for module_name, display_name in dependencies.items():
@@ -133,7 +123,6 @@ def test() -> bool:
         all_passed = False
     print()
 
-    # Final report
     print("=" * 70)
     if all_passed:
         print("✓ ALL SMOKE TESTS PASSED")
@@ -146,6 +135,5 @@ def test() -> bool:
 
 
 if __name__ == '__main__':
-    """Allow direct execution: python -m ECOv003_L3T_L4T_JET.smoke_test"""
     success = test()
     sys.exit(0 if success else 1)

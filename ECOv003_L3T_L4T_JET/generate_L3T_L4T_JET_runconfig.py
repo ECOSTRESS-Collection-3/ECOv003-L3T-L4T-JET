@@ -1,11 +1,12 @@
 from os import makedirs
-from os.path import join, dirname, abspath, expanduser
+from os.path import join, dirname, abspath, expanduser, basename
 from shutil import which
 import socket
 from uuid import uuid4
 from datetime import datetime
 
-from ECOv002_granules import L2TLSTE
+from ECOv003_granules import L2TLSTE
+from ECOv002_granules import L2TLSTE as ECOv002L2TLSTE
 
 import logging
 import colored_logging as cl
@@ -13,6 +14,17 @@ import colored_logging as cl
 from .constants import *
 
 logger = logging.getLogger(__name__)
+
+
+def _load_L2T_LSTE_granule(L2T_LSTE_filename: str):
+    L2T_LSTE_basename = basename(str(L2T_LSTE_filename))
+    if "ECOv003" in L2T_LSTE_basename:
+        return L2TLSTE(L2T_LSTE_filename)
+    elif "ECOv002" in L2T_LSTE_basename:
+        return ECOv002L2TLSTE(L2T_LSTE_filename)
+    else:
+        raise ValueError(f"collection not recognized in L2T LSTE filename: {L2T_LSTE_filename}")
+
 
 def generate_L3T_L4T_JET_runconfig(
         L2T_LSTE_filename: str,
@@ -36,7 +48,7 @@ def generate_L3T_L4T_JET_runconfig(
         product_counter: int = None,
         template_filename: str = None,
         collection: str = "003") -> str:
-    L2T_LSTE_granule = L2TLSTE(L2T_LSTE_filename)
+    L2T_LSTE_granule = _load_L2T_LSTE_granule(L2T_LSTE_filename)
 
     if orbit is None:
         orbit = L2T_LSTE_granule.orbit
@@ -62,15 +74,15 @@ def generate_L3T_L4T_JET_runconfig(
     timestamp = f"{time_UTC:%Y%m%dT%H%M%S}"
     granule_ID = f"ECOv{collection}_L3T_JET_{orbit:05d}_{scene:03d}_{tile}_{timestamp}_{build}_{product_counter:02d}"
 
-    if runconfig_filename is None:
-        runconfig_filename = join(working_directory, "runconfig", f"{granule_ID}.xml")
-
-    runconfig_filename = abspath(expanduser(runconfig_filename))
-
     if working_directory is None:
         working_directory = granule_ID
 
     working_directory = abspath(expanduser(working_directory))
+
+    if runconfig_filename is None:
+        runconfig_filename = join(working_directory, "runconfig", f"{granule_ID}.xml")
+
+    runconfig_filename = abspath(expanduser(runconfig_filename))
 
     if executable_filename is None:
         executable_filename = which("L3T_L4T_JET")
@@ -120,10 +132,6 @@ def generate_L3T_L4T_JET_runconfig(
 
     L2T_LSTE_filename = abspath(expanduser(str(L2T_LSTE_filename)))
     L2T_STARS_filename = abspath(expanduser(str(L2T_STARS_filename)))
-    # working_directory = abspath(expanduser(str(working_directory)))
-    # sources_directory = abspath(expanduser(str(sources_directory)))
-    # static_directory = abspath(expanduser(str(static_directory)))
-    # SRTM_directory = abspath(expanduser(str(SRTM_directory)))
 
     logger.info(f"generating run-config for orbit {cl.val(orbit)} scene {cl.val(scene)}")
     logger.info(f"loading L3T_L4T_JET template: {cl.file(template_filename)}")
@@ -147,6 +155,8 @@ def generate_L3T_L4T_JET_runconfig(
     template = template.replace("sources_directory", sources_directory)
     logger.info(f"static directory: {cl.dir(static_directory)}")
     template = template.replace("static_directory", static_directory)
+    logger.info(f"SRTM directory: {cl.dir(SRTM_directory)}")
+    template = template.replace("SRTM_directory", SRTM_directory)
     logger.info(f"executable: {cl.file(executable_filename)}")
     template = template.replace("executable_filename", executable_filename)
     logger.info(f"output directory: {cl.dir(output_directory)}")
