@@ -197,3 +197,6 @@ generate-history:
 			end; \
 		end > release_diffs.patch; \
 	'
+
+show-issues:
+	gh issue list --state open --json number,title,body --template '{{range .}}## #{{.number}}: {{.title}}{{"\n\n"}}{{.body}}{{"\n\n---\n\n"}}{{end}}'
