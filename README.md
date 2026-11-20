@@ -168,21 +168,37 @@ The surface energy balance processing for ECOSTRESS begins with an artificial ne
 
 Net radiation (`Rn`) is computed using the Verma net radiation model (`RN_MODEL_NAME = "verma"`) and recorded in the L3T ETAUX product listed in Table 2. The Breathing Earth System Simulator-Jet Propulsion Laboratory (BESS-JPL) algorithm, contributed by Dr. Youngryel Ryu, iteratively calculates ET and Gross Primary Production (GPP) estimates for inclusion in the ensemble and WUE products.
 
-## 3. Release History & Collection 3 Forward-Processing Timeline
+## 3. ECOSTRESS Collection 3 Forward Processing Deployment
+
+In operational production at the NASA JPL ECOSTRESS Science Data System (SDS), `ECOv003-L3T-L4T-JET` is deployed alongside `ECOv003-L2T-STARS` inside a unified `linux/amd64` container image (`artifactory.jpl.nasa.gov:16001/gov/nasa/jpl/ecostress/sds/pge-v3/eco-level-2-3-4-application`, maintained in the [`ecostress-level-2-3-4`](https://github.com/ECOSTRESS-Collection-3/ecostress-level-2-3-4) repository).
+
+### 3.1. Operational Deployment Epochs & Version Matrix
+
+Collection 3 forward processing spans two primary operational baselines:
+
+1. **Epoch 1 — Late-2025 Forward-Processing Baseline (November 2025 – November 2, 2026):**
+   - Deployed in late 2025 (`eco-level-2-3-4-application` `v1.7.0` / `v1.7.1`) using Suomi NPP VIIRS (`VNP43NRT`) coarse surface reflectance and albedo inputs in `L2T_STARS`.
+   - Under SDS operational requirements, maintained PGEs were held output-consistent with this baseline. Following science model and accuracy validation updates in `ECOv003-L3T-L4T-JET v1.16.0` (January 2026), the forward-processing container operated continuously for **~11 months** without container rebuilds.
+2. **Epoch 2 — Post-Suomi NPP Decommissioning JPSS Baseline (November 2026 – Present):**
+   - On **November 2, 2026**, Suomi NPP VIIRS was decommissioned, terminating upstream `VNP43NRT` inputs required by `L2T_STARS`.
+   - `ECOv003-L2T-STARS` transitioned to JPSS (`VCD43NRT`) coarse inputs (`v1.14.0` → `v1.18.0`, migrating its data-fusion core from Julia to compiled Rust `_stars_rust`), while `ECOv003-L3T-L4T-JET` was co-updated (`v1.19.0` → `v1.22.1`) on a unified Python 3.12 + `conda-forge` geospatial toolchain (`GDAL` NetCDF4/HDF5 plugins, `GEOS5FP~=2.24.0`, `JET3~=3.1.1`) to preserve Collection 3 algorithmic consistency.
+
+| Operational Epoch | Dates | Container Image (`eco-level-2-3-4-application`) | `ECOv003-L3T-L4T-JET` | `JET3` Core Engine | `ECOv003-L2T-STARS` | Upstream Coarse VIIRS Source |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Epoch 1: Initial C3 Deployment** | Nov 2025 – Jan 2026 | `v1.7.0` / `v1.7.1` | `v1.13.0` (`>=1.13.0`) | Inline (`JET.py` in repo) | `>=1.11.0` | Suomi NPP (`VNP43NRT`) |
+| **Epoch 1: C3 Reference Baseline** | Jan 2026 – Nov 2, 2026 | `v1.7.1` (11-month stable run) | `v1.16.0` – `v1.18.0` | Extracted to standalone `JET3` | `>=1.11.0` – `1.12.1` | Suomi NPP (`VNP43NRT`) |
+| **Epoch 2: JPSS Transition & Rust Migration** | Nov 13 – Nov 19, 2026 | `v1.9.0` → `v1.13.0` | `v1.20.0` → `v1.22.0` | `JET3~=3.0.1` → `3.1.0` | `1.16.0` → `1.18.0` (Rust) | JPSS (`VCD43NRT`) |
+| **Epoch 2: GEOS-5 FP Contract Hardening** | Nov 20, 2026 | `v1.13.1` | `v1.22.1` | `JET3~=3.1.1` | `1.18.0` | JPSS (`VCD43NRT`) |
+
+### 3.2. Container Runtime & Granule Versioning Conventions
+
+* **PGE Entrypoint Wrapper (`/pge/L3T_L4T_JET.sh`):** Inside the production container, SDS invokes `/pge/L3T_L4T_JET.sh <RunConfig.xml>`, which pins `GDAL_DRIVER_PATH="/opt/venv/lib/gdalplugins"`, `GDAL_DATA="/opt/venv/share/gdal"`, and `PROJ_DATA="/opt/venv/share/proj"` (preventing host environment leakage under Apptainer/Singularity) and executes `ECOv003-L3T-L4T-JET "$@" --strip-console`.
+* **Product Filename `BuildID` vs. `StandardMetadata.PGEVersion`:** All Collection 3 output granule filenames (e.g., `ECOv003_L3T_JET_21485_013_11SPS_20220420T211350_0700_01.zip`) carry the Collection 3 static **`BuildID` `0700`** (`DEFAULT_BUILD = "0700"`), while the exact semantic version of `ECOv003-L3T-L4T-JET` that produced the granule is recorded inside each granule's `.json` metadata file under `StandardMetadata.PGEVersion`.
+* **Automated Deployment Verification:** Both `ECOv003-L3T-L4T-JET test` (CLI smoke test) and `pytest` container smoke tests (`tests/test_docker_smoke.py`) validate Python 3.12 compatibility, ONNX/GDAL/rasterio imports, and the `GEOS5FPConnection` / `JET3` SI-unit API contract (`wind_speed_mps`, `Td_K`, `Ta_C`, `RH`, `SM`) prior to Artifactory image publication.
+
+## 4. Release History
 
 The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v1.22.1` (November 2026), transforming from an initial port of the ECOSTRESS Collection 2 evapotranspiration Product Generating Executable (PGE) into a modularized, containerized Collection 3 operational pipeline backed by the standalone `JET3` science library.
-
-### Operational Context: Collection 3 Deployment & the Suomi NPP → JPSS Transition
-
-The release cadence of `ECOv003-L3T-L4T-JET` directly reflects the operational lifecycle of the ECOSTRESS Collection 3 forward-processing system (`ecostress-level-2-3-4`):
-
-1. **Late-2025 Forward-Processing Baseline (`v1.13.0` – `v1.16.0`):**
-   * In late 2025, ECOSTRESS Collection 3 entered operational forward processing (`ecostress-level-2-3-4 v1.7.0` / `v1.7.1`, pairing `ECOv003-L3T-L4T-JET>=1.13.0` with `ECOv003-L2T-STARS>=1.11.0`).
-   * Operational requirements mandated that maintained PGEs remain output-consistent with that late-2025 baseline. Following validation updates in `v1.16.0` (January 2026), the production baseline ran stably for nearly 11 months without requiring container rebuilds—explaining why `ECOv003-L3T-L4T-JET` saw only documentation and metadata updates (`v1.17.0`–`v1.18.0`) between February and October 2026.
-2. **Suomi NPP VIIRS Decommissioning & JPSS Transition (`v1.19.0` – `v1.22.1`, November 2026):**
-   * On **November 2, 2026**, Suomi NPP VIIRS was decommissioned, cutting off upstream `VNP43NRT` coarse surface reflectance and albedo inputs required by `L2T_STARS`.
-   * Transitioning `ECOv003-L2T-STARS` to JPSS (`VCD43NRT`) inputs (`v1.14.0` → `v1.18.0`) while preserving Collection 3 algorithmic consistency required rebuilding the shared `ecostress-level-2-3-4` application container around Python 3.12 and a `conda-forge` geospatial/scientific toolchain (`v1.9.0` → `v1.13.0`).
-   * `ECOv003-L3T-L4T-JET` was aligned in lockstep across `v1.19.0`–`v1.22.1` so both PGEs share compatible dependency pins (`GEOS5FP~=2.24.0`, `JET3~=3.1.1`, `numpy~=2.5.4`, `pandas~=3.1.1`, `rasterio~=1.5.2`) and automated container smoke tests inside `ecostress-level-2-3-4`.
 
 ### Phase 1: Collection 2 Port & Initial Release (`v1.0.1` – `v1.1.0`, May – June 2025)
 * **`v1.0.1` (2025-05-21) — Initial Collection 3 Port:**

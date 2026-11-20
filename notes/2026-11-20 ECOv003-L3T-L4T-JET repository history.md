@@ -1,27 +1,41 @@
-# `ECOv003-L3T-L4T-JET` Repository History (`v1.0.1` – `v1.22.1`)
+# `ECOv003-L3T-L4T-JET` Repository History & Collection 3 Operational Context (`v1.0.1` – `v1.22.1`)
 
 The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v1.22.1` (November 2026), transforming from an initial port of the ECOSTRESS Collection 2 evapotranspiration Product Generating Executable (PGE) into a modularized, containerized Collection 3 operational pipeline backed by the standalone `JET3` science library.
 
 ---
 
-## Operational Context: Collection 3 Deployment & the Suomi NPP → JPSS Transition
+## 1. Operational Context: Collection 3 Forward Processing & the Suomi NPP → JPSS Transition
 
-The release cadence of `ECOv003-L3T-L4T-JET` directly reflects the operational lifecycle of the ECOSTRESS Collection 3 forward-processing system (`ecostress-level-2-3-4`):
+The release history of `ECOv003-L3T-L4T-JET` is shaped by the operational lifecycle of the NASA JPL ECOSTRESS Science Data System (SDS) forward-processing stack (`ecostress-level-2-3-4`, published to `artifactory.jpl.nasa.gov:16001/gov/nasa/jpl/ecostress/sds/pge-v3/eco-level-2-3-4-application`):
 
-1. **Late-2025 Forward-Processing Baseline (`v1.13.0` – `v1.16.0`):**
-   * In late 2025, ECOSTRESS Collection 3 entered operational forward processing (`ecostress-level-2-3-4 v1.7.0` / `v1.7.1`, pairing `ECOv003-L3T-L4T-JET>=1.13.0` with `ECOv003-L2T-STARS>=1.11.0`).
-   * Operational requirements mandated that maintained PGEs remain output-consistent with that late-2025 baseline. Following validation updates in `v1.16.0` (January 2026), the production baseline ran stably for nearly 11 months without requiring container rebuilds—explaining why `ECOv003-L3T-L4T-JET` saw only documentation and metadata updates (`v1.17.0`–`v1.18.0`) between February and October 2026.
-2. **Suomi NPP VIIRS Decommissioning & JPSS Transition (`v1.19.0` – `v1.22.1`, November 2026):**
-   * On **November 2, 2026**, Suomi NPP VIIRS was decommissioned, cutting off upstream `VNP43NRT` coarse surface reflectance and albedo inputs required by `L2T_STARS`.
-   * Transitioning `ECOv003-L2T-STARS` to JPSS (`VCD43NRT`) inputs (`v1.14.0` → `v1.18.0`) while preserving Collection 3 algorithmic consistency required rebuilding the shared `ecostress-level-2-3-4` application container around Python 3.12 and a `conda-forge` geospatial/scientific toolchain (`v1.9.0` → `v1.13.0`).
-   * `ECOv003-L3T-L4T-JET` was aligned in lockstep across `v1.19.0`–`v1.22.1` so both PGEs share compatible dependency pins (`GEOS5FP~=2.24.0`, `JET3~=3.1.1`, `numpy~=2.5.4`, `pandas~=3.1.1`, `rasterio~=1.5.2`) and automated container smoke tests inside `ecostress-level-2-3-4`.
+### 1.1. Late-2025 Forward-Processing Baseline & Output Consistency Mandate (`v1.13.0` – `v1.18.0`)
+* **Deployment Baseline (`v1.13.0` / `v1.16.0`):** In late 2025, ECOSTRESS Collection 3 entered operational forward processing (`eco-level-2-3-4-application` `v1.7.0` on `2025-11-20` and `v1.7.1` on `2025-12-03`), pairing `ECOv003-L3T-L4T-JET>=1.13.0` with `ECOv003-L2T-STARS>=1.11.0` (ingesting Suomi NPP VIIRS `VNP43NRT` coarse surface reflectance and albedo). Following science model and accuracy validation updates in `ECOv003-L3T-L4T-JET v1.16.0` (January 2026), the forward-processing baseline operated stably in production for **nearly 11 months** without requiring container rebuilds.
+* **Algorithmic & Output Consistency Constraint:** Under SDS operational governance, all maintained Collection 3 PGE updates must produce scientifically consistent outputs matching the late-2025 Collection 3 baseline across the mission data record (`BuildID` `0700` in granule filenames, with exact software provenance tracked in `StandardMetadata.PGEVersion` inside granule JSON metadata). During the 11-month stability period (February – October 2026), `ECOv003-L3T-L4T-JET` required only documentation and metadata updates (`v1.17.0`–`v1.18.0`) while the `v1.7.1` production container ran continuously.
+
+### 1.2. November 2, 2026 Suomi NPP VIIRS Decommissioning & JPSS Transition (`v1.19.0` – `v1.22.1`)
+* **Upstream Sensor Cutover:** On **November 2, 2026**, Suomi NPP VIIRS was decommissioned, terminating upstream `VNP43NRT` coarse surface reflectance and albedo inputs required by `L2T_STARS`.
+* **Coordinated Cross-Repository Rebuild:** To restore forward processing without breaking Collection 3 output consistency:
+  1. `ECOv003-L2T-STARS` transitioned from Suomi NPP (`VNP43NRT`) to JPSS (`VCD43NRT`) coarse inputs (`v1.14.0` → `v1.18.0`) and migrated its data-fusion core from Julia to a compiled Rust extension (`_stars_rust`).
+  2. The shared `ecostress-level-2-3-4` application container was rebuilt around Python 3.12 (`>=3.12, <3.14`) and a `conda-forge` scientific/GDAL toolchain (`libgdal-netcdf`, `libgdal-hdf5`, `rasterio~=1.5.2`, `numpy~=2.5.4`, `pandas~=3.1.1`, `scikit-learn~=1.9.1`) that executes identically on JPL `x86_64` AVX2 cluster nodes and under Apple Silicon Rosetta 2 (`v1.9.0` → `v1.13.1`).
+  3. `ECOv003-L3T-L4T-JET` was co-updated across `v1.19.0`–`v1.22.1` to align dependency pins with `ECOv003-L2T-STARS` (`GEOS5FP~=2.24.0`, `JET3~=3.1.1`), consolidate the CLI entrypoint, remove legacy dead code, and add automated container smoke tests.
+
+### 1.3. Cross-Stack Forward-Processing Version Matrix
+
+| Operational Epoch | Dates | Container Image (`eco-level-2-3-4-application`) | `ECOv003-L3T-L4T-JET` | `JET3` Core Engine | `ECOv003-L2T-STARS` | Upstream Coarse VIIRS Source |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Epoch 1: Initial C3 Deployment** | Nov 2025 – Jan 2026 | `v1.7.0` / `v1.7.1` | `v1.13.0` (`>=1.13.0`) | Inline (`JET.py` in repo) | `>=1.11.0` | Suomi NPP (`VNP43NRT`) |
+| **Epoch 1: C3 Reference Baseline** | Jan 2026 – Nov 2, 2026 | `v1.7.1` (11-month stable run) | `v1.16.0` – `v1.18.0` | Extracted to standalone `JET3` | `>=1.11.0` – `1.12.1` | Suomi NPP (`VNP43NRT`) |
+| **Epoch 2: JPSS Transition & Rust Migration** | Nov 13 – Nov 19, 2026 | `v1.9.0` → `v1.13.0` | `v1.20.0` → `v1.22.0` | `JET3~=3.0.1` → `3.1.0` | `1.16.0` → `1.18.0` (Rust) | JPSS (`VCD43NRT`) |
+| **Epoch 2: GEOS-5 FP Contract Hardening** | Nov 20, 2026 | `v1.13.1` | `v1.22.1` | `JET3~=3.1.1` | `1.18.0` | JPSS (`VCD43NRT`) |
 
 ---
 
-## Phase 1: Collection 2 Port & Initial Release (`v1.0.1` – `v1.1.0`, May – June 2025)
+## 2. Chronological Release History (`v1.0.1` – `v1.22.1`)
+
+### Phase 1: Collection 2 Port & Initial Release (`v1.0.1` – `v1.1.0`, May – June 2025)
 
 * **`v1.0.1` (2025-05-21) — Initial Collection 3 Port:**
-  * Duplicated the ECOSTRESS Collection 2 `ECOv002-L3T-L4T-JET` codebase and re-targeted it for Collection 3 (`ECOv003-L3T-L4T-JET v1.0.1`).
+  * Duplicated the ECOSTRESS Collection 2 `ECOv002-L3T-L4T-JET` codebase and re-targeted it for Collection 3 (`ECOv003-L3T-L4T-JET v1.0.1`, `requires-python = ">=3.10"`).
   * Replaced inline evapotranspiration sub-modules with standalone pip dependencies: `BESS-JPL>=1.9.2`, `PM-JPL>=1.4.0`, `STIC-JPL`, `PTJPLSM>=1.2.0`, `FLiESANN`, `FLiESLUT`, `verma-net-radiation`, `ECOv002-granules>=1.1.1`, `ECOv003-granules>=1.3.0`, `NASADEM>=1.2.0`, `rasters>=1.5.0`, `GEOS5FP`, `koppengeiger`, `MCD12C1-2019-v006`, `check-distribution`, `colored-logging`, `solar-apparent-time`, and `sun-angles`.
   * Consolidated the three separate Collection 2 auxiliary products (`L3T SEB`, `L3T SM`, and `L3T MET`) into a single unified **`L3T ETAUX`** product (`Ta`, `RH`, `SM`, `Rg`, `Rn`) and switched product serialization to `ECOv003-granules>=1.3.0`.
   * Added individual model daily ET outputs alongside the ensemble daily median (`ETdaily`) and established the `ECOv003-L3T-L4T-JET` CLI entry point.
@@ -29,17 +43,17 @@ The release cadence of `ECOv003-L3T-L4T-JET` directly reflects the operational l
 * **`v1.1.0` (2025-06-24) — Exit Codes & Downscaling Modularization:**
   * Replaced local exit code definitions with the external `ECOv003-exit-codes` package and removed legacy `SEB`/`SM`/`MET` product writer stubs.
   * Extracted meteorological and soil-moisture regression downscaling out of `ECOv003_L3T_L4T_JET.py` into dedicated modules (`sharpen_meteorology_data.py` and `sharpen_soil_moisture_data.py`), introducing direct `GEOS5FP_connection.Td_C(...)` calls.
-  * Removed obsolete `downscale_*` helper modules and added a working granule-download example script using `ECOv002-CMR`.
+  * Removed obsolete `downscale_*` helper modules (`downscale_air_temperature.py`, `downscale_relative_humidity.py`, `downscale_soil_moisture.py`, `downscale_vapor_pressure_deficit.py`) and added a working granule-download example script using `ECOv002-CMR`.
 
 ---
 
-## Phase 2: Ancillary Data Wiring & Resilience (`v1.2.0` – `v1.9.0`, July – September 2025)
+### Phase 2: Ancillary Data Wiring & Resilience (`v1.2.0` – `v1.9.0`, July – September 2025)
 
 * **`v1.2.0` – `v1.2.1` (2025-07-01 to 2025-07-03):**
   * Added Python 3.11 support, bumped `BESS-JPL>=1.12.0` to fix soil heat flux return values (`v1.2.0`), and passed `GEOS5FP_connection` into `FLiESANN` so GEOS-5 FP downloads respected the configured download directory (`v1.2.1`).
 
 * **`v1.3.0` (2025-07-03):**
-  * Reverted XML run-config parsing in `L3TL4TJETConfig.py` and `L3T_L4T_JET.xml` from `StaticAuxiliaryFileGroup` back to `StaticAncillaryFileGroup` to match Science Data System (SDS) run-config conventions.
+  * Reverted XML run-config parsing in `L3TL4TJETConfig.py` and `L3T_L4T_JET.xml` from `StaticAuxiliaryFileGroup` back to `StaticAncillaryFileGroup` to match SDS run-config conventions.
 
 * **`v1.4.0` – `v1.6.1` (2025-07-03 to 2025-07-28):**
   * Wired local download directories for static and ancillary datasets: `GEDI` canopy height into `BESS-JPL>=1.13.0` (`v1.4.0`), `MODISCI` clumping index into `BESS-JPL>=1.15.0` alongside `FLiESLUT>=1.0.3` and Python 3.12 CI support (`v1.5.0`), and `SoilGrids` field capacity/wilting point plus `GEDI` into `PTJPLSM>=1.3.0` (`v1.6.0`).
@@ -57,7 +71,7 @@ The release cadence of `ECOv003-L3T-L4T-JET` directly reflects the operational l
 
 ---
 
-## Phase 3: Open-Water Evaporation & SI/Daylight Standardization (`v1.10.0` – `v1.11.0`, October – November 2025)
+### Phase 3: Open-Water Evaporation & SI/Daylight Standardization (`v1.10.0` – `v1.11.0`, October – November 2025)
 
 * **`v1.10.0` (2025-10-01) — `AquaSEBS` Open-Water Integration & Dual-Collection Support:**
   * Added support for ingesting both `ECOv002` (`ECOv002-granules~=1.2.1`) and `ECOv003` (`ECOv003-granules~=1.10.0`) `L2T_LSTE` and `L2T_STARS` input granules.
@@ -71,29 +85,30 @@ The release cadence of `ECOv003-L3T-L4T-JET` directly reflects the operational l
 
 ---
 
-## Phase 4: Modular Architecture, `JET3` Extraction & Collection 3 Deployment (`v1.13.0` – `v1.18.0`, November 2025 – October 2026)
+### Phase 4: Modular Architecture, `JET3` Extraction & Collection 3 Baseline (`v1.13.0` – `v1.18.0`, November 2025 – October 2026)
 
 * **`v1.13.0` (2025-11-18) — Full Pipeline Modularization & Forward-Processing Deployment:**
   * Decomposed `ECOv003_L3T_L4T_JET.py` into focused modules: `read_ECOv003_configuration.py`, `read_ECOv003_inputs.py`, `JET.py`, `process_JET_table.py`, and `write_ECOv003_products.py`.
-  * Added tabular/point processing (`process_JET_table`), bundled the ECOSTRESS Collection 2 Cal/Val reference input dataset, and delivered the package into the initial Collection 3 forward-processing container baseline (`ecostress-level-2-3-4 v1.7.0` / `v1.7.1`).
+  * Added tabular/point processing (`process_JET_table`), bundled the ECOSTRESS Collection 2 Cal/Val reference input dataset, and delivered the package into the initial Collection 3 forward-processing container baseline (`eco-level-2-3-4-application` `v1.7.0` / `v1.7.1`, pinning `ECOv003-L3T-L4T-JET>=1.13.0`).
 
 * **`v1.14.0` – `v1.16.0` (2026-01-24 to 2026-01-30) — `JET3` Extraction & Collection 3 Validation:**
-  * Extracted the core `JET` science engine, `process_JET_table`, meteorological/soil-moisture sharpening modules, and Cal/Val tables (`ECOv002-calval-tables~=1.13.0`) out of `ECOv003-L3T-L4T-JET` into the standalone **`JET3`** package, leaving `ECOv003-L3T-L4T-JET` as a PGE wrapper around `JET3`.
-  * Added performance benchmarking tools (`performance/analyze_table_processing.py`) and updated model dependencies and accuracy assessments for Collection 3 deployment (`v1.16.0`), establishing the reference output baseline maintained through the 11-month Suomi NPP operational run.
+  * Extracted the core `JET` science engine, `process_JET_table`, meteorological/soil-moisture sharpening modules, and Cal/Val tables (`ECOv002-calval-tables~=1.13.0`) out of `ECOv003-L3T-L4T-JET` into the standalone **`JET3`** package, leaving `ECOv003-L3T-L4T-JET` as a clean PGE wrapper around `JET3`.
+  * Added performance benchmarking tools (`performance/analyze_table_processing.py`) and updated model dependencies and accuracy assessments for Collection 3 deployment (`v1.16.0`: `AquaSEBS~=1.3.0`, `BESS-JPL~=1.28.0`, `FLiESANN~=2.13.0`, `GEOS5FP~=2.19.0`, `PM-JPL~=1.11.0`, `PTJPLSM~=1.10.0`, `STIC-JPL~=1.6.0`, `verma-net-radiation~=1.11.0`), establishing the reference output baseline maintained through the 11-month Suomi NPP operational run.
 
 * **`v1.17.0` – `v1.18.0` (2026-04-29 to 2026-10-12) — Documentation & Metadata Fixes:**
   * Separated PGE and Science Algorithm Software (SAS) documentation, corrected layer names/sizes and uncertainty timesteps in `README.md` and the User Guide (`v1.17.0`–`v1.17.1`), and fixed `StandardMetadata/InputPointer` formatting (`v1.18.0`) ahead of the `ecostress-level-2-3-4 v1.8.0` container refresh.
 
 ---
 
-## Phase 5: JPSS Transition, Containerization & `GEOS5FP` Remediation (`v1.19.0` – `v1.22.1`, November 2026)
+### Phase 5: JPSS Transition, Code Cleanup & `GEOS5FP` Hardening (`v1.19.0` – `v1.22.1`, November 2026)
 
 * **`v1.19.0` – `v1.20.3` (2026-11-11 to 2026-11-17) — Coordinated JPSS Transition & Python 3.12/3.13 Alignment:**
   * Following the November 2, 2026 decommissioning of Suomi NPP VIIRS, aligned dependency pins with `ECOv003-L2T-STARS` (`v1.14.0`–`v1.18.0`, transitioning from `VNP43NRT` to JPSS `VCD43NRT`) across Python 3.13 (`v1.19.0`) and Python 3.12 (`v1.20.0`), culminating in `GEOS5FP~=2.24.0`, `JET3~=3.0.1`, `AquaSEBS~=1.3.0`, `BESS-JPL~=1.28.0`, `FLiESANN~=2.13.1`, `PM-JPL~=1.11.0`, `PTJPLSM~=1.10.0`, `STIC-JPL~=1.6.0`, `verma-net-radiation~=1.11.0`, `ECOv003-granules~=1.14.0`, `ECOv003-exit-codes~=1.2.0`, `rasters~=1.21.0`, `numpy~=2.5.4`, `pandas~=3.1.1`, `rasterio~=1.5.2`, `scikit-learn~=1.9.1`, `onnx~=1.23.2`, and `onnxruntime~=1.31.1` (`v1.20.2`–`v1.20.3`) for `ecostress-level-2-3-4 v1.9.0`–`v1.12.0`.
 
-* **`v1.21.0` – `v1.22.0` (2026-11-19) — CLI Refactor & Multi-Stage Docker Runtime:**
+* **`v1.21.0` – `v1.22.0` (2026-11-19) — Code Cleanup, CLI Refactor & Multi-Stage Docker Runtime:**
+  * Removed redundant wrapper modules (`PGE.py`, duplicate `exceptions.py`) and consolidated the PGE entrypoint into `ECOv003_L3T_L4T_JET.py`.
   * Replaced manual `sys.argv` parsing with `argparse` (`build_parser`), added `--save-diagnostics` (deprecating `--save-intermediate`), introduced `smoke_test.py` (`ECOv003-L3T-L4T-JET test`), bumped `JET3~=3.1.0`, and added a multi-stage `micromamba` + `pip` `Dockerfile` (`linux/amd64`, Python 3.12) with container smoke tests (`tests/test_docker_smoke.py`), enabling end-to-end CLI smoke testing in `ecostress-level-2-3-4 v1.13.0`.
 
-* **`v1.22.1` (In Progress on `geos5fp_mismatch`, 2026-11-20) — `GEOS5FP` API Contract Hardening:**
+* **`v1.22.1` (2026-11-20) — `GEOS5FP` API Contract Hardening:**
   * Isolated a regression where `JET3 v3.1.0` eagerly called legacy `GEOS5FP_connection.wind_speed(...)` (carried over from `ECOv003-L3T-L4T-JET v1.10.0`) after `GEOS5FP>=2.24.0` renamed the method to `wind_speed_mps(...)`.
   * Updated `ECOv003-L3T-L4T-JET v1.22.1` `pyproject.toml` to require `JET3~=3.1.1` alongside `GEOS5FP~=2.24.0`, and expanded `smoke_test.py` and `test_docker_smoke.py` to assert `GEOS5FPConnection` SI method availability (`wind_speed_mps`, `Td_K`, `Ta_C`, `RH`, `SM`) and verify `JET3` API compatibility prior to building `ecostress-level-2-3-4 v1.13.1`.
