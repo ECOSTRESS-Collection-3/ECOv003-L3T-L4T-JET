@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ECOv003-L3T-L4T-JET"
-version = "1.22.0"
+version = "1.22.1"
 description = "ECOSTRESS Collection 3 JPL Evapotranspiration (JET) Product Generating Executable (PGE)"
 readme = "README.md"
 authors = [
@@ -28,7 +28,7 @@ dependencies = [
     "ECOv003-granules~=1.14.0",
     "FLiESANN~=2.13.1",
     "GEOS5FP~=2.24.0",
-    "JET3~=3.1.0",
+    "JET3~=3.1.1",
     "koppengeiger~=1.1.0",
     "monte-carlo-sensitivity~=1.9.1",
     "numpy~=2.5.4",

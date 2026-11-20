@@ -6,7 +6,9 @@ and environment compatibility.
 """
 
 import importlib
+import inspect
 import sys
+from unittest.mock import MagicMock
 
 
 def test() -> bool:
@@ -120,6 +122,46 @@ def test() -> bool:
         print(f"  ✓ PASS: Package version: {pkg_version}")
     except Exception as e:
         print(f"  ✗ FAIL: Could not access package metadata: {e}")
+        all_passed = False
+    print()
+
+    # Test 7: Upstream API compatibility (GEOS5FP & JET3)
+    print("[TEST] Upstream API Compatibility (GEOS5FP & JET3)")
+    try:
+        import numpy as np
+        from GEOS5FP import GEOS5FPConnection
+        from JET3 import JET
+
+        required_geos5fp_methods = ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM")
+        missing_methods = [
+            m for m in required_geos5fp_methods if not callable(getattr(GEOS5FPConnection, m, None))
+        ]
+        if missing_methods:
+            print(f"  ✗ FAIL: GEOS5FPConnection missing expected methods: {missing_methods}")
+            all_passed = False
+        else:
+            print(f"  ✓ GEOS5FPConnection exposes {required_geos5fp_methods}")
+
+        jet_source = inspect.getsource(JET)
+        if "GEOS5FP_connection.wind_speed(" in jet_source:
+            print("  ✗ FAIL: JET3 still invokes deprecated GEOS5FP_connection.wind_speed()")
+            all_passed = False
+        else:
+            print("  ✓ JET3 uses wind_speed_mps() rather than deprecated wind_speed()")
+
+        mock_geos = MagicMock(spec=GEOS5FPConnection)
+        dummy_grid = np.ones((2, 2), dtype=np.float32)
+        mock_geos.wind_speed_mps.return_value = dummy_grid * 2.5
+        mock_geos.Ta_C.return_value = dummy_grid * 25.0
+        mock_geos.RH.return_value = dummy_grid * 0.5
+        mock_geos.SM.return_value = dummy_grid * 0.25
+        mock_geos.Td_K.return_value = dummy_grid * 287.15
+
+        assert callable(mock_geos.wind_speed_mps)
+        assert callable(mock_geos.Td_K)
+        print("  ✓ PASS: Upstream GEOS5FP / JET3 API contract verified")
+    except Exception as e:
+        print(f"  ✗ FAIL: Upstream API compatibility check failed: {e}")
         all_passed = False
     print()
 

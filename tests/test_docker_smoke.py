@@ -6,6 +6,7 @@ container and that all critical components and dependencies are functional.
 """
 
 import importlib
+import inspect
 import sys
 
 
@@ -64,6 +65,21 @@ class TestCriticalDependencies:
         """Test that rasters package is installed and accessible."""
         import rasters
         assert rasters is not None
+
+    def test_geos5fp_and_jet3_api_contract(self):
+        """Verify GEOS5FPConnection exposes SI-suffixed methods required by JET3 >=3.1.1."""
+        from GEOS5FP import GEOS5FPConnection
+        from JET3 import JET
+
+        for method_name in ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM"):
+            assert callable(getattr(GEOS5FPConnection, method_name, None)), (
+                f"GEOS5FPConnection missing required method '{method_name}'"
+            )
+
+        jet_source = inspect.getsource(JET)
+        assert "GEOS5FP_connection.wind_speed(" not in jet_source, (
+            "JET3 still calls deprecated GEOS5FP_connection.wind_speed()"
+        )
 
 
 class TestEntryPoint:

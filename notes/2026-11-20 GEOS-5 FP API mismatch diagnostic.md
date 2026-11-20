@@ -83,3 +83,14 @@ An audit of all `GEOS5FP_connection` invocations across `JET3 v3.1.0` revealed t
    make rebuild-python-env-build
    make build-runtime
    make smoke-test
+   ```
+
+---
+
+## 5. Verification Checklist
+
+- [ ] `JET3 v3.1.1` tagged and published with `"GEOS5FP>=2.24.0"` pinned.
+- [ ] Unit tests in `JET3` verify `JET()` execution when `wind_speed_mps=None` and `elevation_m=None`.
+- [ ] `sharpen_meteorology_data` verified to produce sharpened outputs without falling back due to `Td_C`.
+- [ ] `ECOv003-L3T-L4T-JET v1.22.1` updated with `"JET3~=3.1.1"` and expanded `smoke_test.py` / `test_docker_smoke.py`.
+- [ ] `ecostress-level-2-3-4 v1.13.1` runtime image rebuilt and validated end-to-end with `make smoke-test`.
