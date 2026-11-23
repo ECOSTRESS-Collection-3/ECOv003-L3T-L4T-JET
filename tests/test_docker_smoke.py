@@ -77,8 +77,8 @@ class TestCriticalDependencies:
             )
 
         jet_source = inspect.getsource(JET)
-        assert "GEOS5FP_connection.wind_speed(" not in jet_source, (
-            "JET3 still calls deprecated GEOS5FP_connection.wind_speed()"
+        assert "GEOS5FP_connection.wind_speed_mps(" in jet_source, (
+            "JET3 does not call GEOS5FP_connection.wind_speed_mps()"
         )
 
 

@@ -143,11 +143,11 @@ def test() -> bool:
             print(f"  ✓ GEOS5FPConnection exposes {required_geos5fp_methods}")
 
         jet_source = inspect.getsource(JET)
-        if "GEOS5FP_connection.wind_speed(" in jet_source:
-            print("  ✗ FAIL: JET3 still invokes deprecated GEOS5FP_connection.wind_speed()")
+        if "GEOS5FP_connection.wind_speed_mps(" not in jet_source:
+            print("  ✗ FAIL: JET3 does not call GEOS5FP_connection.wind_speed_mps()")
             all_passed = False
         else:
-            print("  ✓ JET3 uses wind_speed_mps() rather than deprecated wind_speed()")
+            print("  ✓ JET3 uses wind_speed_mps()")
 
         mock_geos = MagicMock(spec=GEOS5FPConnection)
         dummy_grid = np.ones((2, 2), dtype=np.float32)
