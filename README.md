@@ -198,10 +198,12 @@ Collection 3 forward processing spans two primary operational baselines:
 
 ## 4. Known Issues & Operational Troubleshooting
 
-The table below tracks known runtime issues affecting `ECOv003-L3T-L4T-JET` and its `JET3` science dependency, identified from forward-processing DAG log triage (`EcostressDAG_Col3.46000.0802.20261116T001911117`):
+The table below tracks known runtime issues affecting `ECOv003-L3T-L4T-JET` and its `JET3` / `BESS-JPL` / `GEOS5FP` science dependencies, identified from forward-processing DAG log triage (`EcostressDAG_Col3.46000.0802.20261116T001911117`) and end-to-end example execution:
 
 | Severity | Log Signature | Affected Versions | Root Cause | Resolution / Operational Guidance |
 | :--- | :--- | :--- | :--- | :--- |
+| **FATAL (`ValueError`)** | `ValueError: Multiple variables can only be queried for point geometries` (`BESS_JPL/retrieve_BESS_JPL_GEOS5FP_inputs.py:189` -> `GEOS5FP/query.py:378`) | `ECOv003-L3T-L4T-JET <=1.22.1` + `BESS-JPL ~=1.28.0` with `GEOS5FP >=2.24.0` | `BESS-JPL` passes a single-element list `["CO2SC"]` to `GEOS5FP_connection.query(..., geometry=RasterGrid)`, which `GEOS5FP >=2.24.0` rejects as a multi-variable point-only query. | **Pending in `v1.23.0`:** Update `BESS-JPL` to query `CO2SC` as a scalar/method call (or relax `len(variables) > 1` in `GEOS5FP.query()`), pin the updated dependency in `pyproject.toml`, and validate end-to-end execution. |
+| **Bug (`TypeError`)** | `TypeError: 'module' object is not callable` on `from ECOv003_L3T_L4T_JET import generate_L3T_L4T_JET_runconfig` | `ECOv003-L3T-L4T-JET v1.13.0` – `v1.22.1` | `generate_L3T_L4T_JET_runconfig` was extracted into a submodule in `v1.13.0` without being re-exported in `ECOv003_L3T_L4T_JET/__init__.py`, causing top-level imports to resolve to the submodule object. | **Fixed on `geos5fp_mismatch` (for `v1.23.0`):** Re-exported `generate_L3T_L4T_JET_runconfig` in `ECOv003_L3T_L4T_JET/__init__.py`. |
 | **FATAL (`ERROR`)** | `AttributeError: 'GEOS5FPConnection' object has no attribute 'wind_speed'` | `ECOv003-L3T-L4T-JET v1.22.0` + `JET3 v3.1.0` with `GEOS5FP >=2.24.0` | `GEOS5FP >=2.24.0` renamed `.wind_speed(...)` to `.wind_speed_mps(...)`, while `JET3 v3.1.0` (`JET3/JET.py:283`) eagerly called `.wind_speed(...)` when `wind_speed_mps` was omitted. | **Fixed in `JET3 v3.1.1` / `ECOv003-L3T-L4T-JET v1.22.1`** (`JET3~=3.1.1` pinned in `pyproject.toml`, verified by `ECOv003-L3T-L4T-JET test`). |
 | **Degraded Output (`ERROR` + `WARNING`)** | `'GEOS5FPConnection' object has no attribute 'Td_C'` followed by `unable to sharpen meteorology` | `ECOv003-L3T-L4T-JET <=1.22.0` + `JET3 <=3.1.0` with `GEOS5FP >=2.24.0` | `JET3/sharpen_meteorology_data.py` called `.Td_C(...)`, removed in `GEOS5FP >=2.24.0` in favor of `.Td_K(...)`. Caught in `read_ECOv003_inputs.py`, silently falling back to unsharpened coarse GEOS-5 FP `Ta_C` and `RH`. | **Fixed in `JET3 v3.1.1` / `ECOv003-L3T-L4T-JET v1.22.1`**, which computes Celsius dew-point temperature via `Td_K(...) - 273.15`. |
 | **Non-Fatal (`WARNING`)** | `netrc credentials not found for daac.ornl.gov` / `urs.earthdata.nasa.gov` | All containerized versions | Stateless runtime containers do not ship with `/root/.netrc` credentials for ORNL DAAC or NASA Earthdata Login. | **Benign** when `StaticAncillaryFileGroup/L3T_L4T_STATIC` (`GEDI_download`, `MODISCI_download`, `MCD12C1_download`, `SoilGrids_download`) is pre-populated. Bind-mount a read-only `.netrc` if on-demand static ancillary downloads are required. |
@@ -209,7 +211,7 @@ The table below tracks known runtime issues affecting `ECOv003-L3T-L4T-JET` and 
 
 ## 5. Release History
 
-The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v1.22.1` (November 2026), transforming from an initial port of the ECOSTRESS Collection 2 evapotranspiration Product Generating Executable (PGE) into a modularized, containerized Collection 3 operational pipeline backed by the standalone `JET3` science library.
+The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v1.23.0` (November 2026), transforming from an initial port of the ECOSTRESS Collection 2 evapotranspiration Product Generating Executable (PGE) into a modularized, containerized Collection 3 operational pipeline backed by the standalone `JET3` science library.
 
 ### Phase 1: Collection 2 Port & Initial Release (`v1.0.1` – `v1.1.0`, May – June 2025)
 * **`v1.0.1` (2025-05-21) — Initial Collection 3 Port:**
@@ -256,7 +258,7 @@ The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v
 * **`v1.17.0` – `v1.18.0` (2026-04-29 to 2026-10-12) — Documentation & Metadata Fixes:**
   * Separated PGE and Science Algorithm Software (SAS) documentation, corrected layer names/sizes and uncertainty timesteps in `README.md` and the User Guide (`v1.17.0`–`v1.17.1`), and fixed `StandardMetadata/InputPointer` formatting (`v1.18.0`) ahead of the `ecostress-level-2-3-4 v1.8.0` container refresh.
 
-### Phase 5: JPSS Transition, Containerization & `GEOS5FP` Remediation (`v1.19.0` – `v1.22.1`, November 2026)
+### Phase 5: JPSS Transition, Containerization & `GEOS5FP` Remediation (`v1.19.0` – `v1.23.0`, November 2026)
 * **`v1.19.0` – `v1.20.3` (2026-11-11 to 2026-11-17) — Coordinated JPSS Transition & Python 3.12/3.13 Alignment:**
   * Following the November 2, 2026 decommissioning of Suomi NPP VIIRS, aligned dependency pins with `ECOv003-L2T-STARS` (`v1.14.0`–`v1.18.0`, transitioning from `VNP43NRT` to JPSS `VCD43NRT`) across Python 3.13 (`v1.19.0`) and Python 3.12 (`v1.20.0`), culminating in `GEOS5FP~=2.24.0`, `JET3~=3.0.1`, `AquaSEBS~=1.3.0`, `BESS-JPL~=1.28.0`, `FLiESANN~=2.13.1`, `PM-JPL~=1.11.0`, `PTJPLSM~=1.10.0`, `STIC-JPL~=1.6.0`, `verma-net-radiation~=1.11.0`, `ECOv003-granules~=1.14.0`, `ECOv003-exit-codes~=1.2.0`, `rasters~=1.21.0`, `numpy~=2.5.4`, `pandas~=3.1.1`, `rasterio~=1.5.2`, `scikit-learn~=1.9.1`, `onnx~=1.23.2`, and `onnxruntime~=1.31.1` (`v1.20.2`–`v1.20.3`) for `ecostress-level-2-3-4 v1.9.0`–`v1.12.0`.
 * **`v1.21.0` – `v1.22.0` (2026-11-19) — CLI Refactor & Multi-Stage Docker Runtime:**
@@ -264,3 +266,6 @@ The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v
 * **`v1.22.1` (2026-11-20) — `GEOS5FP` API Contract Hardening:**
   * Isolated a regression where `JET3 v3.1.0` eagerly called legacy `GEOS5FP_connection.wind_speed(...)` (carried over from `ECOv003-L3T-L4T-JET v1.10.0`) after `GEOS5FP>=2.24.0` renamed the method to `wind_speed_mps(...)`.
   * Updated `ECOv003-L3T-L4T-JET v1.22.1` `pyproject.toml` to require `JET3~=3.1.1` alongside `GEOS5FP~=2.24.0`, and expanded `smoke_test.py` and `test_docker_smoke.py` to assert `GEOS5FPConnection` SI method availability (`wind_speed_mps`, `Td_K`, `Ta_C`, `RH`, `SM`) and verify `JET3` API compatibility prior to building `ecostress-level-2-3-4 v1.13.1`.
+* **`v1.23.0` (2026-11-23, In Progress) — Top-Level Export Restoration & `BESS-JPL` / `GEOS5FP` `CO2SC` Raster Query Fix:**
+  * Re-exported `generate_L3T_L4T_JET_runconfig` in `ECOv003_L3T_L4T_JET/__init__.py` so top-level imports resolve to the callable function rather than the submodule.
+  * Identified and tracked upstream `BESS-JPL` (`retrieve_BESS_JPL_GEOS5FP_inputs.py`) / `GEOS5FP` (`query.py`) `RasterGrid` `CO2SC` single-element list query failure (`ValueError: Multiple variables can only be queried for point geometries`) for resolution, dependency pinning, and end-to-end granule verification.
