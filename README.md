@@ -27,7 +27,7 @@ If you use this software in your research, please cite it using the following Bi
   author       = {Halverson, Gregory H. and Cawse-Nicholson, Kerry and Pascolini-Campbell, Madeleine},
   title        = {{ECOv003-L3T-L4T-JET}: {ECOSTRESS} Collection 3 Level 3 and 4 Evapotranspiration ({JET}) Product Generating Executable},
   year         = {2026},
-  version      = {1.23.0},
+  version      = {1.24.0},
   publisher    = {Zenodo / NASA Jet Propulsion Laboratory},
   url          = {https://github.com/ECOSTRESS-Collection-3/ECOv003-L3T-L4T-JET}
 }
@@ -76,7 +76,7 @@ Metadata for the ECOSTRESS Collection 3 tiled products is provided in JSON forma
     "LongName": "ECOSTRESS Tiled Evapotranspiration Ensemble Instantaneous and Daytime L3 Global 70 m",
     "NorthBoundingCoordinate": 33.43490918842431,
     "PGEName": "L3T_L4T_JET",
-    "PGEVersion": "1.23.0",
+    "PGEVersion": "1.24.0",
     "PlatformLongName": "ISS",
     "PlatformShortName": "ISS",
     "PlatformType": "Spacecraft",
@@ -189,7 +189,7 @@ Collection 3 forward processing spans two primary operational baselines:
    - Under SDS operational requirements, maintained PGEs were held output-consistent with this baseline. Following science model and accuracy validation updates in `ECOv003-L3T-L4T-JET v1.16.0` (January 2026), the forward-processing container operated continuously for **~11 months** without container rebuilds.
 2. **Epoch 2 — Post-Suomi NPP Decommissioning JPSS Baseline (November 2026 – Present):**
    - On **November 2, 2026**, Suomi NPP VIIRS was decommissioned, terminating upstream `VNP43NRT` inputs required by `L2T_STARS`.
-   - `ECOv003-L2T-STARS` transitioned to JPSS (`VCD43NRT`) coarse inputs (`v1.14.0` → `v1.18.0`, migrating its data-fusion core from Julia to compiled Rust `_stars_rust`), while `ECOv003-L3T-L4T-JET` was co-updated (`v1.19.0` → `v1.23.0`) on a unified Python 3.12 + `conda-forge` geospatial toolchain (`GDAL` NetCDF4/HDF5 plugins, `GEOS5FP~=2.27.0`, `JET3~=3.3.0`, `BESS-JPL~=1.29.0`) to preserve Collection 3 algorithmic consistency.
+   - `ECOv003-L2T-STARS` transitioned to JPSS (`VCD43NRT`) coarse inputs (`v1.14.0` → `v1.18.0`, migrating its data-fusion core from Julia to compiled Rust `_stars_rust`), while `ECOv003-L3T-L4T-JET` was co-updated (`v1.19.0` → `v1.24.0`) on a unified Python 3.12 + `conda-forge` geospatial toolchain (`GDAL` NetCDF4/HDF5 plugins, `GEOS5FP~=2.27.0`, `JET3~=3.4.0`, `BESS-JPL~=1.29.0`) to preserve Collection 3 algorithmic consistency.
 
 | Operational Epoch | Dates | Container Image (`eco-level-2-3-4-application`) | `ECOv003-L3T-L4T-JET` | `JET3` Core Engine | `ECOv003-L2T-STARS` | Upstream Coarse VIIRS Source |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -197,6 +197,7 @@ Collection 3 forward processing spans two primary operational baselines:
 | **Epoch 1: C3 Reference Baseline** | Jan 2026 – Nov 2, 2026 | `v1.7.1` (11-month stable run) | `v1.16.0` – `v1.18.0` | Extracted to standalone `JET3` | `>=1.11.0` – `1.12.1` | Suomi NPP (`VNP43NRT`) |
 | **Epoch 2: JPSS Transition & Rust Migration** | Nov 13 – Nov 19, 2026 | `v1.9.0` → `v1.13.0` | `v1.20.0` → `v1.22.0` | `JET3~=3.0.1` → `3.1.0` | `1.16.0` → `1.18.0` (Rust) | JPSS (`VCD43NRT`) |
 | **Epoch 2: GEOS-5 FP & Solar Radiation Parity** | Nov 20 – Nov 23, 2026 | `v1.13.1` → `v1.14.0` | `v1.22.1` → `v1.23.0` | `JET3~=3.1.1` → `3.3.0` | `1.18.0` | JPSS (`VCD43NRT`) |
+| **Epoch 2: Open-Water & Blank-Output Hardening** | Nov 24, 2026 – Present | `v1.14.1` *(target)* | `v1.24.0` | `JET3~=3.4.0` | `1.18.0` | JPSS (`VCD43NRT`) |
 
 ### 3.2. Container Runtime & Granule Versioning Conventions
 
@@ -206,21 +207,23 @@ Collection 3 forward processing spans two primary operational baselines:
 
 ## 4. Known Issues & Operational Troubleshooting
 
-The table below tracks known runtime issues affecting `ECOv003-L3T-L4T-JET` and its `JET3` / `BESS-JPL` / `GEOS5FP` science dependencies, identified from forward-processing DAG log triage (`EcostressDAG_Col3.46000.0802.20261116T001911117`) and end-to-end example execution:
+The table below tracks open and resolved runtime issues affecting `ECOv003-L3T-L4T-JET` and its `JET3` / `BESS-JPL` / `GEOS5FP` science dependencies, identified from forward-processing DAG log triage (`EcostressDAG_Col3.46000.0802.20261116T001911117` and `EcostressDAG_Col3.47400.0802.20261115T235815542`) and end-to-end example execution:
 
 | Severity | Log Signature | Affected Versions | Root Cause | Resolution / Operational Guidance |
 | :--- | :--- | :--- | :--- | :--- |
-| **Degraded Output (`+74.35 W/m²` `Rg` Bias)** | Elevated `L3T_ETAUX` `Rg` (`+74.35 W/m²` bias, $r = 0.389$) propagating into `Rn`, `PET`, and `ETdaily` | `ECOv003-L3T-L4T-JET v1.20.0` – `v1.22.1` with `GEOS5FP v2.24.0` – `v2.26.0` | `GEOS5FPConnection.vapor_gccm()` returned raw `TQV` ($\text{kg m}^{-2}$) without dividing by `10.0` ($\text{g cm}^{-2}$) and `ozone_cm()` returned raw `TO3` ($\text{DU}$) without dividing by `1000.0` ($\text{cm}$) on gridded rasters, saturating `FLiES-ANN` inputs. | **Fixed in `GEOS5FP v2.27.0`, `JET3 v3.3.0`, and `ECOv003-L3T-L4T-JET v1.23.0`** (`GEOS5FP~=2.27.0`, `JET3~=3.3.0`, `BIAS_CORRECT_FLIES_ANN = False`), restoring `Rg` parity (`Bias = -0.023 W/m²`, `r = 0.9986`). |
+| **Open — High (`#92`)** | `check_distribution.BlankOutputError: variable Tn is a blank image` (`JET3/JET.py:933` -> `AquaSEBS`) | `ECOv003-L3T-L4T-JET <=1.23.0` with `JET3 <=3.3.0` | `JET()` invokes `AquaSEBS(...)` unconditionally even when no valid unmasked open-water pixels exist (`(water_mask == 1) & np.isfinite(ST_C)`), aborting terrestrial ET on land-only or cloud-masked water tiles (19 occurrences across 17 tiles in `EcostressDAG_Col3.47400`). | **Planned for `v1.24.0` (`JET3~=3.4.0`):** Guard `AquaSEBS(...)` in `JET3` so open-water evaporation is skipped when no valid unmasked water pixels are present, allowing terrestrial ET outputs to be generated normally when valid land pixels exist. |
+| **Open — Medium (`#91`)** | `BlankOutputError` uncaught at PGE entrypoint (`run_pge::docker_status= 1`) | `ECOv003-L3T-L4T-JET v1.13.0` – `v1.23.0` | `ECOv003_L3T_L4T_JET.py` catches `JET3.BlankOutput`, whereas `check_distribution` raises `check_distribution.BlankOutputError`, causing blank scenes to exit with status `1` instead of `ECOv003_exit_codes.BLANK_OUTPUT`. | **Planned for `v1.24.0`:** Import `BlankOutputError` from `check_distribution` and catch `(BlankOutput, BlankOutputError)` to exit cleanly with `BLANK_OUTPUT`. |
+| **Open — Low (`#85` / `WARNING`)** | `netrc credentials not found for daac.ornl.gov` / `urs.earthdata.nasa.gov` | All containerized versions (`v1.21.0` – `v1.23.0`) | Stateless runtime containers do not ship with `/root/.netrc` credentials for ORNL DAAC or NASA Earthdata Login during static ancillary client initialization. | **Non-fatal** when `L3T_L4T_STATIC` (`/runtime_ancillary`) is pre-staged. **Planned for `v1.24.0`:** Filter non-fatal `.netrc` warnings in `configure_pge_logging` and document `.netrc` mount requirements for on-demand downloads. |
+| **Degraded Output (`+74.35 W/m²` `Rg` Bias)** | Elevated `L3T_ETAUX` `Rg` (`+74.35 W/m²` bias, $r = 0.389$) propagating into `Rn`, `PET`, and `ETdaily` | `ECOv003-L3T-L4T-JET v1.20.0` – `v1.22.1` with `GEOS5FP v2.24.0` – `v2.26.0` | `GEOS5FPConnection.vapor_gccm()` returned raw `TQV` ($	ext{kg m}^{-2}$) without dividing by `10.0` ($	ext{g cm}^{-2}$) and `ozone_cm()` returned raw `TO3` ($	ext{DU}$) without dividing by `1000.0` ($	ext{cm}$) on gridded rasters, saturating `FLiES-ANN` inputs. | **Fixed in `GEOS5FP v2.27.0`, `JET3 v3.3.0`, and `ECOv003-L3T-L4T-JET v1.23.0`** (`GEOS5FP~=2.27.0`, `JET3~=3.3.0`, `BIAS_CORRECT_FLIES_ANN = False`), restoring `Rg` parity (`Bias = -0.023 W/m²`, `r = 0.9986`). |
 | **FATAL (`ValueError`)** | `ValueError: Multiple variables can only be queried for point geometries` (`BESS_JPL/retrieve_BESS_JPL_GEOS5FP_inputs.py:189` -> `GEOS5FP/query.py:378`) | `ECOv003-L3T-L4T-JET <=1.22.1` + `BESS-JPL ~=1.28.0` with `GEOS5FP >=2.24.0` | `BESS-JPL` passes a single-element list `["CO2SC"]` to `GEOS5FP_connection.query(..., geometry=RasterGrid)`, which `GEOS5FP >=2.24.0` rejects as a multi-variable point-only query. | **Fixed in `BESS-JPL v1.29.0`, `GEOS5FP >=2.25.0`, and `ECOv003-L3T-L4T-JET v1.23.0`** (`BESS-JPL~=1.29.0`, `GEOS5FP~=2.27.0`). |
 | **Bug (`TypeError`)** | `TypeError: 'module' object is not callable` on `from ECOv003_L3T_L4T_JET import generate_L3T_L4T_JET_runconfig` | `ECOv003-L3T-L4T-JET v1.13.0` – `v1.22.1` | `generate_L3T_L4T_JET_runconfig` was extracted into a submodule in `v1.13.0` without being re-exported in `ECOv003_L3T_L4T_JET/__init__.py`, causing top-level imports to resolve to the submodule object. | **Fixed in `v1.23.0`:** Re-exported `generate_L3T_L4T_JET_runconfig` in `ECOv003_L3T_L4T_JET/__init__.py`. |
 | **FATAL (`ERROR`)** | `AttributeError: 'GEOS5FPConnection' object has no attribute 'wind_speed'` | `ECOv003-L3T-L4T-JET v1.22.0` + `JET3 v3.1.0` with `GEOS5FP >=2.24.0` | `GEOS5FP >=2.24.0` renamed `.wind_speed(...)` to `.wind_speed_mps(...)`, while `JET3 v3.1.0` (`JET3/JET.py:283`) eagerly called `.wind_speed(...)` when `wind_speed_mps` was omitted. | **Fixed in `JET3 v3.1.1` / `ECOv003-L3T-L4T-JET v1.22.1`** (`JET3~=3.1.1` pinned in `pyproject.toml`, verified by `ECOv003-L3T-L4T-JET test`). |
 | **Degraded Output (`ERROR` + `WARNING`)** | `'GEOS5FPConnection' object has no attribute 'Td_C'` followed by `unable to sharpen meteorology` | `ECOv003-L3T-L4T-JET <=1.22.0` + `JET3 <=3.1.0` with `GEOS5FP >=2.24.0` | `JET3/sharpen_meteorology_data.py` called `.Td_C(...)`, removed in `GEOS5FP >=2.24.0` in favor of `.Td_K(...)`. Caught in `read_ECOv003_inputs.py`, silently falling back to unsharpened coarse GEOS-5 FP `Ta_C` and `RH`. | **Fixed in `JET3 v3.1.1` / `ECOv003-L3T-L4T-JET v1.22.1`**, which computes Celsius dew-point temperature via `Td_K(...) - 273.15`. |
-| **Non-Fatal (`WARNING`)** | `netrc credentials not found for daac.ornl.gov` / `urs.earthdata.nasa.gov` | All containerized versions | Stateless runtime containers do not ship with `/root/.netrc` credentials for ORNL DAAC or NASA Earthdata Login. | **Benign** when `StaticAncillaryFileGroup/L3T_L4T_STATIC` (`GEDI_download`, `MODISCI_download`, `MCD12C1_download`, `SoilGrids_download`) is pre-populated. Bind-mount a read-only `.netrc` if on-demand static ancillary downloads are required. |
-| **Upstream Dependency** | Missing `L2T_STARS` granule due to `GDAL_DRIVER_PATH` / `gdal_HDF5.so` or `VCD43NRT` errors | Upstream `ECOv003-L2T-STARS` | `L3T_L4T_JET` requires `InputFileGroup/L2T_STARS`; upstream `L2T_STARS` failures prevent downstream `L3T_L4T_JET` scheduling in DAG workflows. | Ensure `/pge/L2T_STARS.sh` exports `GDAL_DRIVER_PATH="/opt/venv/lib/gdalplugins"` and runs `ECOv003-L2T-STARS >=1.18.0` before re-driving failed DAG tiles. |
+| **Upstream (`L2T_STARS`)** | `STARS_NDVI_51KTS_70m.tif: MissingRequired: TIFF directory is missing required "ImageLength" field` | Upstream `ECOv003-L2T-STARS` (tile `51KTS`) | Truncated/corrupt cached `STARS_NDVI_51KTS_70m.tif` from an interrupted earlier run prevents downstream `L3T_L4T_JET` scheduling (4 occurrences in `EcostressDAG_Col3.47400`). | Clear the corrupt cached intermediate GeoTIFF for tile `51KTS` in the `L2T_STARS` working cache and re-drive. |
 
 ## 5. Release History
 
-The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v1.23.0` (November 2026), transforming from an initial port of the ECOSTRESS Collection 2 evapotranspiration Product Generating Executable (PGE) into a modularized, containerized Collection 3 operational pipeline backed by the standalone `JET3` science library.
+The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v1.24.0` (November 2026), transforming from an initial port of the ECOSTRESS Collection 2 evapotranspiration Product Generating Executable (PGE) into a modularized, containerized Collection 3 operational pipeline backed by the standalone `JET3` science library.
 
 ### Phase 1: Collection 2 Port & Initial Release (`v1.0.1` – `v1.1.0`, May – June 2025)
 * **`v1.0.1` (2025-05-21) — Initial Collection 3 Port:**
@@ -267,7 +270,7 @@ The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v
 * **`v1.17.0` – `v1.18.0` (2026-04-29 to 2026-10-12) — Documentation & Metadata Fixes:**
   * Separated PGE and Science Algorithm Software (SAS) documentation, corrected layer names/sizes and uncertainty timesteps in `README.md` and the User Guide (`v1.17.0`–`v1.17.1`), and fixed `StandardMetadata/InputPointer` formatting (`v1.18.0`) ahead of the `ecostress-level-2-3-4 v1.8.0` container refresh.
 
-### Phase 5: JPSS Transition, Containerization & `GEOS5FP` Remediation (`v1.19.0` – `v1.23.0`, November 2026)
+### Phase 5: JPSS Transition, Containerization & `GEOS5FP` Remediation (`v1.19.0` – `v1.24.0`, November 2026)
 * **`v1.19.0` – `v1.20.3` (2026-11-11 to 2026-11-17) — Coordinated JPSS Transition & Python 3.12/3.13 Alignment:**
   * Following the November 2, 2026 decommissioning of Suomi NPP VIIRS, aligned dependency pins with `ECOv003-L2T-STARS` (`v1.14.0`–`v1.18.0`, transitioning from `VNP43NRT` to JPSS `VCD43NRT`) across Python 3.13 (`v1.19.0`) and Python 3.12 (`v1.20.0`), culminating in `GEOS5FP~=2.24.0`, `JET3~=3.0.1`, `AquaSEBS~=1.3.0`, `BESS-JPL~=1.28.0`, `FLiESANN~=2.13.1`, `PM-JPL~=1.11.0`, `PTJPLSM~=1.10.0`, `STIC-JPL~=1.6.0`, `verma-net-radiation~=1.11.0`, `ECOv003-granules~=1.14.0`, `ECOv003-exit-codes~=1.2.0`, `rasters~=1.21.0`, `numpy~=2.5.4`, `pandas~=3.1.1`, `rasterio~=1.5.2`, `scikit-learn~=1.9.1`, `onnx~=1.23.2`, and `onnxruntime~=1.31.1` (`v1.20.2`–`v1.20.3`) for `ecostress-level-2-3-4 v1.9.0`–`v1.12.0`.
 * **`v1.21.0` – `v1.22.0` (2026-11-19) — CLI Refactor & Multi-Stage Docker Runtime:**
@@ -279,6 +282,10 @@ The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v
   * Re-exported `generate_L3T_L4T_JET_runconfig` in `ECOv003_L3T_L4T_JET/__init__.py` so top-level imports resolve to the callable function rather than the submodule.
   * Updated dependencies to `GEOS5FP~=2.27.0`, `JET3~=3.3.0`, and `BESS-JPL~=1.29.0`, resolving both the `BESS-JPL` `CO2SC` raster list query `ValueError` and the `GEOS5FP` `vapor_gccm` (`/10`) and `ozone_cm` (`/1000`) raster unit-conversion regression that had shifted `FLiES-ANN` `Rg` by `+74.35 W/m²`.
   * Retained `BIAS_CORRECT_FLIES_ANN = False` and `ZERO_COT_CORRECTION = True` in `ECOv003_L3T_L4T_JET/constants.py` to preserve strict consistency with the Collection 3 operational baseline (`BuildID 0700`), and added unit-transformation assertions to `smoke_test.py` and `tests/test_docker_smoke.py`.
+* **`v1.24.0` (In Progress — November 2026) — Open-Water Guard, `BlankOutputError` Exit Mapping & Log Hygiene:**
+  * Catch `check_distribution.BlankOutputError` alongside `JET3.BlankOutput` in `ECOv003_L3T_L4T_JET/ECOv003_L3T_L4T_JET.py` so blank scenes exit with `ECOv003_exit_codes.BLANK_OUTPUT` instead of status `1` (Issue `#91`).
+  * Bump `JET3` dependency to skip `AquaSEBS` open-water processing when no valid unmasked water pixels exist, preserving terrestrial ET outputs on land-only and cloud-masked coastal tiles (Issue `#92`).
+  * Filter benign missing `.netrc` credential warnings (`daac.ornl.gov`, `urs.earthdata.nasa.gov`) in `configure_pge_logging` for stateless container runs (Issue `#85`).
 
 ## 6. Acknowledgements
 
