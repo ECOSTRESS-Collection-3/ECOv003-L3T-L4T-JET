@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "AquaSEBS~=1.3.0",
-    "BESS-JPL~=1.28.0",
+    "BESS-JPL~=1.29.0",
     "check-distribution~=1.2.0",
     "colored-logging~=1.1.0",
     "ECOv002-calval-tables~=1.13.0",
@@ -27,7 +27,7 @@ dependencies = [
     "ECOv003-exit-codes~=1.2.0",
     "ECOv003-granules~=1.14.0",
     "FLiESANN~=2.13.1",
-    "GEOS5FP~=2.25.0",
+    "GEOS5FP~=2.26.0",
     "JET3~=3.2.0",
     "koppengeiger~=1.1.0",
     "monte-carlo-sensitivity~=1.9.1",
