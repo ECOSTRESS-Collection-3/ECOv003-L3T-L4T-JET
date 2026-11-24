@@ -129,15 +129,29 @@ def test() -> bool:
         all_passed = False
     print()
 
-    # Test 7: Upstream API compatibility (GEOS5FP & JET3)
-    print("[TEST] Upstream API Compatibility (GEOS5FP & JET3)")
+    # Test 7: Upstream API & unit contract compatibility (GEOS5FP & JET3)
+    print("[TEST] Upstream API & Unit Compatibility (GEOS5FP & JET3)")
     try:
         import numpy as np
         from GEOS5FP import GEOS5FPConnection
+        from GEOS5FP.constants import VARIABLE_TRANSFORMATIONS
         from JET3 import JET
         from ECOv003_L3T_L4T_JET.constants import BIAS_CORRECT_FLIES_ANN
 
-        assert BIAS_CORRECT_FLIES_ANN is True, "BIAS_CORRECT_FLIES_ANN must be True in PGE constants"
+        assert BIAS_CORRECT_FLIES_ANN is False, (
+            "BIAS_CORRECT_FLIES_ANN must be False in PGE constants to match Collection 3 baseline"
+        )
+        print("  ✓ BIAS_CORRECT_FLIES_ANN is False")
+
+        assert "vapor_gccm" in VARIABLE_TRANSFORMATIONS, "GEOS5FP missing vapor_gccm unit transformation"
+        assert "ozone_cm" in VARIABLE_TRANSFORMATIONS, "GEOS5FP missing ozone_cm unit transformation"
+        assert np.isclose(VARIABLE_TRANSFORMATIONS["vapor_gccm"](10.0), 1.0), (
+            "GEOS5FP vapor_gccm transformation did not scale kg/m^2 to g/cm^2"
+        )
+        assert np.isclose(VARIABLE_TRANSFORMATIONS["ozone_cm"](300.0), 0.3), (
+            "GEOS5FP ozone_cm transformation did not scale Dobson Units to cm"
+        )
+        print("  ✓ GEOS5FP vapor_gccm (/10) and ozone_cm (/1000) unit transformations verified")
 
         required_geos5fp_methods = ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM", "SWin")
         missing_methods = [
@@ -175,7 +189,7 @@ def test() -> bool:
         assert callable(mock_geos.wind_speed_mps)
         assert callable(mock_geos.Td_K)
         assert callable(mock_geos.SWin)
-        print("  ✓ PASS: Upstream GEOS5FP / JET3 API contract verified")
+        print("  ✓ PASS: Upstream GEOS5FP / JET3 API & unit contracts verified")
     except Exception as e:
         print(f"  ✗ FAIL: Upstream API compatibility check failed: {e}")
         all_passed = False

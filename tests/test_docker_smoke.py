@@ -69,12 +69,19 @@ class TestCriticalDependencies:
         assert rasters is not None
 
     def test_geos5fp_and_jet3_api_contract(self):
-        """Verify GEOS5FPConnection exposes SI-suffixed methods and JET3 supports FLiES-ANN bias correction."""
+        """Verify GEOS5FPConnection exposes SI-suffixed methods, unit transforms, and JET3 compatibility."""
+        import numpy as np
         from GEOS5FP import GEOS5FPConnection
+        from GEOS5FP.constants import VARIABLE_TRANSFORMATIONS
         from JET3 import JET
         from ECOv003_L3T_L4T_JET.constants import BIAS_CORRECT_FLIES_ANN
 
-        assert BIAS_CORRECT_FLIES_ANN is True
+        assert BIAS_CORRECT_FLIES_ANN is False
+
+        assert "vapor_gccm" in VARIABLE_TRANSFORMATIONS
+        assert "ozone_cm" in VARIABLE_TRANSFORMATIONS
+        assert np.isclose(VARIABLE_TRANSFORMATIONS["vapor_gccm"](10.0), 1.0)
+        assert np.isclose(VARIABLE_TRANSFORMATIONS["ozone_cm"](300.0), 0.3)
 
         for method_name in ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM", "SWin"):
             assert callable(getattr(GEOS5FPConnection, method_name, None)), (
