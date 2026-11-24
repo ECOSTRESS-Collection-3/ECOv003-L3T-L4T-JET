@@ -14,9 +14,11 @@ class TestPackageImport:
     """Tests for successful package import in Docker environment."""
 
     def test_main_package_import(self):
-        """Test that the main package can be imported."""
+        """Test that the main package and top-level exports can be imported."""
         import ECOv003_L3T_L4T_JET
         assert hasattr(ECOv003_L3T_L4T_JET, '__version__') or hasattr(ECOv003_L3T_L4T_JET, 'version')
+        assert callable(ECOv003_L3T_L4T_JET.L3T_L4T_JET)
+        assert callable(ECOv003_L3T_L4T_JET.generate_L3T_L4T_JET_runconfig)
 
     def test_core_modules_import(self):
         """Test that core modules are accessible."""
@@ -67,14 +69,22 @@ class TestCriticalDependencies:
         assert rasters is not None
 
     def test_geos5fp_and_jet3_api_contract(self):
-        """Verify GEOS5FPConnection exposes SI-suffixed methods required by JET3 >=3.1.1."""
+        """Verify GEOS5FPConnection exposes SI-suffixed methods and JET3 supports FLiES-ANN bias correction."""
         from GEOS5FP import GEOS5FPConnection
         from JET3 import JET
+        from ECOv003_L3T_L4T_JET.constants import BIAS_CORRECT_FLIES_ANN
 
-        for method_name in ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM"):
+        assert BIAS_CORRECT_FLIES_ANN is True
+
+        for method_name in ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM", "SWin"):
             assert callable(getattr(GEOS5FPConnection, method_name, None)), (
                 f"GEOS5FPConnection missing required method '{method_name}'"
             )
+
+        jet_sig = inspect.signature(JET)
+        assert "bias_correct_FLiES_ANN" in jet_sig.parameters, (
+            "JET3.JET missing bias_correct_FLiES_ANN parameter"
+        )
 
         jet_source = inspect.getsource(JET)
         assert "GEOS5FP_connection.wind_speed_mps(" in jet_source, (

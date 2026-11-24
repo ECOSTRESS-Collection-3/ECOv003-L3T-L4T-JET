@@ -31,13 +31,17 @@ def test() -> bool:
         print(f"  ✓ PASS: Python {sys.version_info.major}.{sys.version_info.minor}")
     print()
 
-    # Test 2: Package import
-    print("[TEST] Main Package Import")
+    # Test 2: Package import & top-level exports
+    print("[TEST] Main Package Import & Exports")
     try:
-        import ECOv003_L3T_L4T_JET  # noqa: F401
-        print("  ✓ PASS: ECOv003_L3T_L4T_JET imported successfully")
-    except ImportError as e:
-        print(f"  ✗ FAIL: Failed to import ECOv003_L3T_L4T_JET: {e}")
+        import ECOv003_L3T_L4T_JET
+        assert callable(ECOv003_L3T_L4T_JET.L3T_L4T_JET), "L3T_L4T_JET is not callable"
+        assert callable(ECOv003_L3T_L4T_JET.generate_L3T_L4T_JET_runconfig), (
+            "generate_L3T_L4T_JET_runconfig is not callable"
+        )
+        print("  ✓ PASS: ECOv003_L3T_L4T_JET and top-level exports imported successfully")
+    except Exception as e:
+        print(f"  ✗ FAIL: Failed to import ECOv003_L3T_L4T_JET exports: {e}")
         all_passed = False
     print()
 
@@ -131,8 +135,11 @@ def test() -> bool:
         import numpy as np
         from GEOS5FP import GEOS5FPConnection
         from JET3 import JET
+        from ECOv003_L3T_L4T_JET.constants import BIAS_CORRECT_FLIES_ANN
 
-        required_geos5fp_methods = ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM")
+        assert BIAS_CORRECT_FLIES_ANN is True, "BIAS_CORRECT_FLIES_ANN must be True in PGE constants"
+
+        required_geos5fp_methods = ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM", "SWin")
         missing_methods = [
             m for m in required_geos5fp_methods if not callable(getattr(GEOS5FPConnection, m, None))
         ]
@@ -141,6 +148,13 @@ def test() -> bool:
             all_passed = False
         else:
             print(f"  ✓ GEOS5FPConnection exposes {required_geos5fp_methods}")
+
+        jet_sig = inspect.signature(JET)
+        if "bias_correct_FLiES_ANN" not in jet_sig.parameters:
+            print("  ✗ FAIL: JET3.JET missing bias_correct_FLiES_ANN parameter")
+            all_passed = False
+        else:
+            print("  ✓ JET3.JET exposes bias_correct_FLiES_ANN parameter")
 
         jet_source = inspect.getsource(JET)
         if "GEOS5FP_connection.wind_speed_mps(" not in jet_source:
@@ -156,9 +170,11 @@ def test() -> bool:
         mock_geos.RH.return_value = dummy_grid * 0.5
         mock_geos.SM.return_value = dummy_grid * 0.25
         mock_geos.Td_K.return_value = dummy_grid * 287.15
+        mock_geos.SWin.return_value = dummy_grid * 750.0
 
         assert callable(mock_geos.wind_speed_mps)
         assert callable(mock_geos.Td_K)
+        assert callable(mock_geos.SWin)
         print("  ✓ PASS: Upstream GEOS5FP / JET3 API contract verified")
     except Exception as e:
         print(f"  ✗ FAIL: Upstream API compatibility check failed: {e}")

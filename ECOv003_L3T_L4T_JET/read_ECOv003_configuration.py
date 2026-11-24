@@ -19,6 +19,37 @@ from .L3TL4TJETConfig import L3TL4TJETConfig
 logger = logging.getLogger(__name__)
 
 
+def _wrap_resilient_flush(handler: logging.Handler) -> logging.Handler:
+    """Prevent transient stream/filesystem flush timeouts from printing logging tracebacks."""
+    orig_flush = handler.flush
+
+    def safe_flush():
+        try:
+            orig_flush()
+        except OSError:
+            pass
+
+    handler.flush = safe_flush
+    return handler
+
+
+def configure_pge_logging(log_filename: str, strip_console: bool = False) -> None:
+    """Configure colored_logging cleanly without duplicate root handlers or flush tracebacks."""
+    logging.raiseExceptions = False
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        try:
+            handler.close()
+        except Exception:
+            pass
+
+    cl.configure(filename=log_filename, strip_console=strip_console)
+
+    for handler in root_logger.handlers:
+        _wrap_resilient_flush(handler)
+
+
 def read_ECOv003_configuration(
         runconfig_filename: str,
         strip_console: bool = False,
@@ -31,7 +62,7 @@ def read_ECOv003_configuration(
     granule_ID = runconfig.granule_ID
     log_filename = join(working_directory, "log", f"{granule_ID}.log")
 
-    cl.configure(filename=log_filename, strip_console=strip_console)
+    configure_pge_logging(log_filename=log_filename, strip_console=strip_console)
 
     timer = TicToc()
     timer.tic()
