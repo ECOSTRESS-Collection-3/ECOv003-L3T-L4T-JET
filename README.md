@@ -8,22 +8,30 @@ The ECOSTRESS collection 3 level 3/4 evapotranspiration data products algorithm 
 
 [Gregory H. Halverson](https://github.com/gregory-halverson-jpl) (they/them)<br>
 [gregory.h.halverson@jpl.nasa.gov](mailto:gregory.h.halverson@jpl.nasa.gov)<br>
-NASA Jet Propulsion Laboratory 329G
+NASA Jet Propulsion Laboratory 321H
 
 [Kerry Cawse-Nicholson](https://github.com/kcawse) (she/her)<br>
 [kerry-anne.cawse-nicholson@jpl.nasa.gov](mailto:kerry-anne.cawse-nicholson@jpl.nasa.gov)<br>
-NASA Jet Propulsion Laboratory 329G
+NASA Jet Propulsion Laboratory 321H
 
 [Madeleine Pascolini-Campbell](https://github.com/madeleinepc) (she/her)<br>
 [madeleine.a.pascolini-campbell@jpl.nasa.gov](mailto:madeleine.a.pascolini-campbell@jpl.nasa.gov)<br>
-NASA Jet Propulsion Laboratory 329F
+NASA Jet Propulsion Laboratory 321E
 
-[Evan Davis](https://github.com/evandjpl) (he/him)<br>
-[evan.w.davis@jpl.nasa.gov](mailto:evan.w.davis@jpl.nasa.gov)<br>
-NASA Jet Propulsion Laboratory 397K
+### Citing This Package
 
-[Claire Villanueva-Weeks](https://github.com/clairesvw) (she/her)<br>
-NASA Jet Propulsion Laboratory 329G
+If you use this software in your research, please cite it using the following BibTeX entry:
+
+```bibtex
+@software{halverson_2026_ecov003_l3t_l4t_jet,
+  author       = {Halverson, Gregory H. and Cawse-Nicholson, Kerry and Pascolini-Campbell, Madeleine},
+  title        = {{ECOv003-L3T-L4T-JET}: {ECOSTRESS} Collection 3 Level 3 and 4 Evapotranspiration ({JET}) Product Generating Executable},
+  year         = {2026},
+  version      = {1.23.0},
+  publisher    = {Zenodo / NASA Jet Propulsion Laboratory},
+  url          = {https://github.com/ECOSTRESS-Collection-3/ECOv003-L3T-L4T-JET}
+}
+```
 
 The code for the ECOSTRESS level 3 JET PGE has been developed using open-science practices based on the [ECOSTRESS Collection 2 JET PGE](https://github.com/ECOSTRESS-Collection-2/ECOv002-L3T-L4T-JET) with New Technology Report (NTR) and open-source license from NASA Jet Propulsion Laboratory.
 
@@ -202,7 +210,7 @@ The table below tracks known runtime issues affecting `ECOv003-L3T-L4T-JET` and 
 
 | Severity | Log Signature | Affected Versions | Root Cause | Resolution / Operational Guidance |
 | :--- | :--- | :--- | :--- | :--- |
-| **Degraded Output (`+74.35 W/m²` `Rg` Bias)** | Elevated `L3T_ETAUX` `Rg` (`+74.35 W/m²` bias, $r = 0.389$) propagating into `Rn`, `PET`, and `ETdaily` | `ECOv003-L3T-L4T-JET v1.20.0` – `v1.22.1` with `GEOS5FP v2.24.0` – `v2.26.0` | `GEOS5FPConnection.vapor_gccm()` returned raw `TQV` ($	ext{kg m}^{-2}$) without dividing by `10.0` ($	ext{g cm}^{-2}$) and `ozone_cm()` returned raw `TO3` ($	ext{DU}$) without dividing by `1000.0` ($	ext{cm}$) on gridded rasters, saturating `FLiES-ANN` inputs. | **Fixed in `GEOS5FP v2.27.0`, `JET3 v3.3.0`, and `ECOv003-L3T-L4T-JET v1.23.0`** (`GEOS5FP~=2.27.0`, `JET3~=3.3.0`, `BIAS_CORRECT_FLIES_ANN = False`), restoring `Rg` parity (`Bias = -0.023 W/m²`, `r = 0.9986`). |
+| **Degraded Output (`+74.35 W/m²` `Rg` Bias)** | Elevated `L3T_ETAUX` `Rg` (`+74.35 W/m²` bias, $r = 0.389$) propagating into `Rn`, `PET`, and `ETdaily` | `ECOv003-L3T-L4T-JET v1.20.0` – `v1.22.1` with `GEOS5FP v2.24.0` – `v2.26.0` | `GEOS5FPConnection.vapor_gccm()` returned raw `TQV` ($\text{kg m}^{-2}$) without dividing by `10.0` ($\text{g cm}^{-2}$) and `ozone_cm()` returned raw `TO3` ($\text{DU}$) without dividing by `1000.0` ($\text{cm}$) on gridded rasters, saturating `FLiES-ANN` inputs. | **Fixed in `GEOS5FP v2.27.0`, `JET3 v3.3.0`, and `ECOv003-L3T-L4T-JET v1.23.0`** (`GEOS5FP~=2.27.0`, `JET3~=3.3.0`, `BIAS_CORRECT_FLIES_ANN = False`), restoring `Rg` parity (`Bias = -0.023 W/m²`, `r = 0.9986`). |
 | **FATAL (`ValueError`)** | `ValueError: Multiple variables can only be queried for point geometries` (`BESS_JPL/retrieve_BESS_JPL_GEOS5FP_inputs.py:189` -> `GEOS5FP/query.py:378`) | `ECOv003-L3T-L4T-JET <=1.22.1` + `BESS-JPL ~=1.28.0` with `GEOS5FP >=2.24.0` | `BESS-JPL` passes a single-element list `["CO2SC"]` to `GEOS5FP_connection.query(..., geometry=RasterGrid)`, which `GEOS5FP >=2.24.0` rejects as a multi-variable point-only query. | **Fixed in `BESS-JPL v1.29.0`, `GEOS5FP >=2.25.0`, and `ECOv003-L3T-L4T-JET v1.23.0`** (`BESS-JPL~=1.29.0`, `GEOS5FP~=2.27.0`). |
 | **Bug (`TypeError`)** | `TypeError: 'module' object is not callable` on `from ECOv003_L3T_L4T_JET import generate_L3T_L4T_JET_runconfig` | `ECOv003-L3T-L4T-JET v1.13.0` – `v1.22.1` | `generate_L3T_L4T_JET_runconfig` was extracted into a submodule in `v1.13.0` without being re-exported in `ECOv003_L3T_L4T_JET/__init__.py`, causing top-level imports to resolve to the submodule object. | **Fixed in `v1.23.0`:** Re-exported `generate_L3T_L4T_JET_runconfig` in `ECOv003_L3T_L4T_JET/__init__.py`. |
 | **FATAL (`ERROR`)** | `AttributeError: 'GEOS5FPConnection' object has no attribute 'wind_speed'` | `ECOv003-L3T-L4T-JET v1.22.0` + `JET3 v3.1.0` with `GEOS5FP >=2.24.0` | `GEOS5FP >=2.24.0` renamed `.wind_speed(...)` to `.wind_speed_mps(...)`, while `JET3 v3.1.0` (`JET3/JET.py:283`) eagerly called `.wind_speed(...)` when `wind_speed_mps` was omitted. | **Fixed in `JET3 v3.1.1` / `ECOv003-L3T-L4T-JET v1.22.1`** (`JET3~=3.1.1` pinned in `pyproject.toml`, verified by `ECOv003-L3T-L4T-JET test`). |
@@ -271,3 +279,7 @@ The `ECOv003-L3T-L4T-JET` repository evolved from `v1.0.1` (May 2025) through `v
   * Re-exported `generate_L3T_L4T_JET_runconfig` in `ECOv003_L3T_L4T_JET/__init__.py` so top-level imports resolve to the callable function rather than the submodule.
   * Updated dependencies to `GEOS5FP~=2.27.0`, `JET3~=3.3.0`, and `BESS-JPL~=1.29.0`, resolving both the `BESS-JPL` `CO2SC` raster list query `ValueError` and the `GEOS5FP` `vapor_gccm` (`/10`) and `ozone_cm` (`/1000`) raster unit-conversion regression that had shifted `FLiES-ANN` `Rg` by `+74.35 W/m²`.
   * Retained `BIAS_CORRECT_FLIES_ANN = False` and `ZERO_COT_CORRECTION = True` in `ECOv003_L3T_L4T_JET/constants.py` to preserve strict consistency with the Collection 3 operational baseline (`BuildID 0700`), and added unit-transformation assertions to `smoke_test.py` and `tests/test_docker_smoke.py`.
+
+## 6. Acknowledgements
+
+We thank [Evan Davis](https://github.com/evandjpl) (he/him, [evan.w.davis@jpl.nasa.gov](mailto:evan.w.davis@jpl.nasa.gov)) for assistance with code maintenance and deployment, and [Claire Villanueva-Weeks](https://github.com/clairesvw) (she/her) for assistance with open-source preparation.
