@@ -6,7 +6,9 @@ and environment compatibility.
 """
 
 import importlib
+import inspect
 import sys
+from unittest.mock import MagicMock
 
 
 def test() -> bool:
@@ -29,13 +31,17 @@ def test() -> bool:
         print(f"  ✓ PASS: Python {sys.version_info.major}.{sys.version_info.minor}")
     print()
 
-    # Test 2: Package import
-    print("[TEST] Main Package Import")
+    # Test 2: Package import & top-level exports
+    print("[TEST] Main Package Import & Exports")
     try:
-        import ECOv003_L3T_L4T_JET  # noqa: F401
-        print("  ✓ PASS: ECOv003_L3T_L4T_JET imported successfully")
-    except ImportError as e:
-        print(f"  ✗ FAIL: Failed to import ECOv003_L3T_L4T_JET: {e}")
+        import ECOv003_L3T_L4T_JET
+        assert callable(ECOv003_L3T_L4T_JET.L3T_L4T_JET), "L3T_L4T_JET is not callable"
+        assert callable(ECOv003_L3T_L4T_JET.generate_L3T_L4T_JET_runconfig), (
+            "generate_L3T_L4T_JET_runconfig is not callable"
+        )
+        print("  ✓ PASS: ECOv003_L3T_L4T_JET and top-level exports imported successfully")
+    except Exception as e:
+        print(f"  ✗ FAIL: Failed to import ECOv003_L3T_L4T_JET exports: {e}")
         all_passed = False
     print()
 
@@ -120,6 +126,72 @@ def test() -> bool:
         print(f"  ✓ PASS: Package version: {pkg_version}")
     except Exception as e:
         print(f"  ✗ FAIL: Could not access package metadata: {e}")
+        all_passed = False
+    print()
+
+    # Test 7: Upstream API & unit contract compatibility (GEOS5FP & JET3)
+    print("[TEST] Upstream API & Unit Compatibility (GEOS5FP & JET3)")
+    try:
+        import numpy as np
+        from GEOS5FP import GEOS5FPConnection
+        from GEOS5FP.constants import VARIABLE_TRANSFORMATIONS
+        from JET3 import JET
+        from ECOv003_L3T_L4T_JET.constants import BIAS_CORRECT_FLIES_ANN
+
+        assert BIAS_CORRECT_FLIES_ANN is False, (
+            "BIAS_CORRECT_FLIES_ANN must be False in PGE constants to match Collection 3 baseline"
+        )
+        print("  ✓ BIAS_CORRECT_FLIES_ANN is False")
+
+        assert "vapor_gccm" in VARIABLE_TRANSFORMATIONS, "GEOS5FP missing vapor_gccm unit transformation"
+        assert "ozone_cm" in VARIABLE_TRANSFORMATIONS, "GEOS5FP missing ozone_cm unit transformation"
+        assert np.isclose(VARIABLE_TRANSFORMATIONS["vapor_gccm"](10.0), 1.0), (
+            "GEOS5FP vapor_gccm transformation did not scale kg/m^2 to g/cm^2"
+        )
+        assert np.isclose(VARIABLE_TRANSFORMATIONS["ozone_cm"](300.0), 0.3), (
+            "GEOS5FP ozone_cm transformation did not scale Dobson Units to cm"
+        )
+        print("  ✓ GEOS5FP vapor_gccm (/10) and ozone_cm (/1000) unit transformations verified")
+
+        required_geos5fp_methods = ("wind_speed_mps", "Td_K", "Ta_C", "RH", "SM", "SWin")
+        missing_methods = [
+            m for m in required_geos5fp_methods if not callable(getattr(GEOS5FPConnection, m, None))
+        ]
+        if missing_methods:
+            print(f"  ✗ FAIL: GEOS5FPConnection missing expected methods: {missing_methods}")
+            all_passed = False
+        else:
+            print(f"  ✓ GEOS5FPConnection exposes {required_geos5fp_methods}")
+
+        jet_sig = inspect.signature(JET)
+        if "bias_correct_FLiES_ANN" not in jet_sig.parameters:
+            print("  ✗ FAIL: JET3.JET missing bias_correct_FLiES_ANN parameter")
+            all_passed = False
+        else:
+            print("  ✓ JET3.JET exposes bias_correct_FLiES_ANN parameter")
+
+        jet_source = inspect.getsource(JET)
+        if "GEOS5FP_connection.wind_speed_mps(" not in jet_source:
+            print("  ✗ FAIL: JET3 does not call GEOS5FP_connection.wind_speed_mps()")
+            all_passed = False
+        else:
+            print("  ✓ JET3 uses wind_speed_mps()")
+
+        mock_geos = MagicMock(spec=GEOS5FPConnection)
+        dummy_grid = np.ones((2, 2), dtype=np.float32)
+        mock_geos.wind_speed_mps.return_value = dummy_grid * 2.5
+        mock_geos.Ta_C.return_value = dummy_grid * 25.0
+        mock_geos.RH.return_value = dummy_grid * 0.5
+        mock_geos.SM.return_value = dummy_grid * 0.25
+        mock_geos.Td_K.return_value = dummy_grid * 287.15
+        mock_geos.SWin.return_value = dummy_grid * 750.0
+
+        assert callable(mock_geos.wind_speed_mps)
+        assert callable(mock_geos.Td_K)
+        assert callable(mock_geos.SWin)
+        print("  ✓ PASS: Upstream GEOS5FP / JET3 API & unit contracts verified")
+    except Exception as e:
+        print(f"  ✗ FAIL: Upstream API compatibility check failed: {e}")
         all_passed = False
     print()
 

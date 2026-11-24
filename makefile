@@ -18,7 +18,7 @@ DOCKER_RUN_FLAGS ?= --platform linux/amd64
         docker-build docker-build-toolchain docker-build-installation docker-build-runtime \
         docker-rebuild-toolchain docker-rebuild-installation docker-rebuild-runtime docker-rebuild-all \
         docker-interactive docker-remove docker-clean \
-        compile-documentation smoke-test smoke-test-cli docker-smoke-test repomix
+        compile-documentation smoke-test smoke-test-cli docker-smoke-test repomix generate-history
 
 # Clean up build artifacts and temporary files
 clean:
@@ -143,3 +143,60 @@ compile-documentation:
 
 repomix:
 	npx repomix --ignore "**/*.pdf,**/*.jpeg,**/*.dat,**/*.ipynb,**/*.tex"
+
+generate-history:
+	fish -c ' \
+		git fetch --tags --quiet; \
+		set first_commit (git rev-list --max-parents=0 HEAD | head -n 1); \
+		set releases (gh release list --limit 1000 --json tagName,createdAt --jq "sort_by(.createdAt) | .[].tagName"); \
+		begin; \
+			echo "========================================"; \
+			echo "REPOSITORY RELEASE TIMELINE"; \
+			echo "========================================"; \
+			gh release list --limit 1000; \
+			echo ""; \
+			if test (count $$releases) -ge 1; \
+				set first_rel $$releases[1]; \
+				echo "========================================"; \
+				echo "INITIAL COMMIT ($$first_commit) -> FIRST RELEASE ($$first_rel)"; \
+				echo "========================================"; \
+				git log --reverse --stat -p $$first_commit^..$$first_rel -- "*.py" "pyproject.toml"; \
+				echo ""; \
+			end; \
+			if test (count $$releases) -ge 2; \
+				for i in (seq 2 (count $$releases)); \
+					set prev_idx (math $$i - 1); \
+					set prev $$releases[$$prev_idx]; \
+					set curr $$releases[$$i]; \
+					echo "========================================"; \
+					echo "RELEASE COMMIT HISTORY: $$prev -> $$curr"; \
+					echo "========================================"; \
+					git log --reverse --stat -p $$prev..$$curr -- "*.py" "pyproject.toml"; \
+					echo ""; \
+				end; \
+			end; \
+			if test (count $$releases) -ge 1; \
+				set latest_rel $$releases[-1]; \
+				echo "========================================"; \
+				echo "LATEST RELEASE ($$latest_rel) -> CURRENT WORKING TREE (HEAD + UNCOMMITTED)"; \
+				echo "========================================"; \
+				git log --reverse --stat -p $$latest_rel..HEAD -- "*.py" "pyproject.toml"; \
+				echo ""; \
+				git status -s -- "*.py" "pyproject.toml"; \
+				echo ""; \
+				git diff HEAD -- "*.py" "pyproject.toml"; \
+			else; \
+				echo "========================================"; \
+				echo "INITIAL COMMIT ($$first_commit) -> CURRENT WORKING TREE"; \
+				echo "========================================"; \
+				git log --reverse --stat -p -- "*.py" "pyproject.toml"; \
+				echo ""; \
+				git status -s -- "*.py" "pyproject.toml"; \
+				echo ""; \
+				git diff HEAD -- "*.py" "pyproject.toml"; \
+			end; \
+		end > release_diffs.patch; \
+	'
+
+show-issues:
+	gh issue list --state open --json number,title,body --template '{{range .}}## #{{.number}}: {{.title}}{{"\n\n"}}{{.body}}{{"\n\n---\n\n"}}{{end}}'

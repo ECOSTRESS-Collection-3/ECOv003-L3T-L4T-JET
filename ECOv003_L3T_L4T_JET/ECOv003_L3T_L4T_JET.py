@@ -17,6 +17,7 @@ from ECOv003_exit_codes import (
 from JET3 import BlankOutput, JET
 
 from .constants import (
+    BIAS_CORRECT_FLIES_ANN,
     DEFAULT_DIAGNOSTICS_DIRECTORY,
     RN_MODEL_NAME,
     SAVE_INTERMEDIATE,
@@ -40,6 +41,7 @@ def L3T_L4T_JET(
         upsampling: str = None,
         downsampling: str = None,
         Rn_model_name: str = RN_MODEL_NAME,
+        bias_correct_FLiES_ANN: bool = BIAS_CORRECT_FLIES_ANN,
         zero_COT_correction: bool = ZERO_COT_CORRECTION,
         sharpen_meteorology: bool = SHARPEN_METEOROLOGY,
         sharpen_soil_moisture: bool = SHARPEN_SOIL_MOISTURE,
@@ -154,6 +156,7 @@ def L3T_L4T_JET(
             soil_grids_directory=soil_grids_directory,
             GEDI_directory=GEDI_directory,
             downsampling=downsampling,
+            bias_correct_FLiES_ANN=bias_correct_FLiES_ANN,
         )
 
         LE_PTJPLSM_Wm2 = results["LE_PTJPLSM_Wm2"]
