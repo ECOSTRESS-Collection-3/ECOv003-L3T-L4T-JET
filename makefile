@@ -18,7 +18,8 @@ DOCKER_RUN_FLAGS ?= --platform linux/amd64
         docker-build docker-build-toolchain docker-build-installation docker-build-runtime \
         docker-rebuild-toolchain docker-rebuild-installation docker-rebuild-runtime docker-rebuild-all \
         docker-interactive docker-remove docker-clean \
-        compile-documentation smoke-test smoke-test-cli docker-smoke-test repomix generate-history
+        smoke-test smoke-test-cli docker-smoke-test \
+        compile-documentation repomix generate-history show-issues
 
 # Clean up build artifacts and temporary files
 clean:
@@ -29,13 +30,13 @@ clean:
 	rm -rf .pytest_cache
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
-# Run tests using pytest
+# Run Python unit tests using pytest
 test:
 	pytest -vv -p no:warnings
 
 # Run the smoke test locally using the Python API
 smoke-test:
-	python -c "import $(MODULE_NAME); success = $(MODULE_NAME).test(); exit(0 if success else 1)"
+	python -c "import $(MODULE_NAME); exit(0 if $(MODULE_NAME).test() else 1)"
 
 # Run the smoke test locally via the installed CLI sub-command
 smoke-test-cli:
@@ -65,18 +66,18 @@ install:
 
 # Uninstall the package
 uninstall:
-	pip uninstall $(PACKAGE_NAME)
+	pip uninstall -y $(PACKAGE_NAME)
 
 # Reinstall the package (uninstall and then install)
 reinstall:
 	make uninstall
 	make install
 
-# Create a new Conda environment with the specified Python version
+# Create a new Conda/Mamba environment with the specified Python version
 environment:
 	mamba create -y -n $(ENVIRONMENT_NAME) -c conda-forge python=$(PYTHON_VERSION)
 
-# Remove the Conda environment
+# Remove the Conda/Mamba environment
 remove-environment:
 	mamba env remove -y -n $(ENVIRONMENT_NAME)
 
@@ -107,8 +108,8 @@ docker-build-runtime:
 # Build the runtime image and execute smoke tests inside a container
 docker-smoke-test: docker-build-runtime
 	@echo "=== Running Container Smoke Tests ==="
-	docker run --rm $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_NAME):latest python -c "import ECOv003_L3T_L4T_JET; raise SystemExit(0 if ECOv003_L3T_L4T_JET.test() else 1)"
-	docker run --rm $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_NAME):latest ECOv003-L3T-L4T-JET test
+	docker run --rm $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_NAME):latest python -c "import $(MODULE_NAME); raise SystemExit(0 if $(MODULE_NAME).test() else 1)"
+	docker run --rm $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_NAME):latest $(PACKAGE_NAME) test
 	docker run --rm $(DOCKER_RUN_FLAGS) -v "$(PWD)/tests:/tests:ro" $(DOCKER_IMAGE_NAME):latest pytest /tests/test_docker_smoke.py /tests/test_import_dependencies.py -p no:cacheprovider -p no:warnings -vv
 
 # Granular cache-busting rebuilds (--no-cache-filter)
@@ -142,7 +143,7 @@ compile-documentation:
 	bash documentation/ECOv003_L3_L4_JET_User_Guide.sh
 
 repomix:
-	npx repomix --ignore "**/*.pdf,**/*.jpeg,**/*.dat,**/*.ipynb,**/*.tex"
+	npx repomix -o $(PACKAGE_NAME)-repomix.xml --ignore "**/*.pdf,**/*.jpeg,**/*.dat,**/*.ipynb,**/*.tex,*-repomix*.xml"
 
 generate-history:
 	fish -c ' \
@@ -160,7 +161,7 @@ generate-history:
 				echo "========================================"; \
 				echo "INITIAL COMMIT ($$first_commit) -> FIRST RELEASE ($$first_rel)"; \
 				echo "========================================"; \
-				git log --reverse --stat -p $$first_commit^..$$first_rel -- "*.py" "pyproject.toml"; \
+				git log --reverse --stat -p $$first_rel -- "*.py" "pyproject.toml"; \
 				echo ""; \
 			end; \
 			if test (count $$releases) -ge 2; \
