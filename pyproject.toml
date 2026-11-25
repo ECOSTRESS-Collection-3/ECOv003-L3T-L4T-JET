@@ -56,6 +56,7 @@ requires-python = ">=3.12"
 [project.optional-dependencies]
 dev = [
     "build",
+    "ECOv003-L2T-STARS~=1.19.0",
     "pytest>=6.0",
     "pytest-cov",
     "jupyter",
